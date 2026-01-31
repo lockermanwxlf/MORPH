@@ -1,0 +1,5 @@
+.venv
+.vscode
+.dockerignore
+Dockerfile
+README.md

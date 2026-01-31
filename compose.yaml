@@ -1,0 +1,28 @@
+services:
+  server:
+    build:
+      context: server
+      dockerfile: Dockerfile
+      target: final
+    ports:
+      - "8000:8000"
+      - "51820:51820/udp"
+      - "51820:51820/tcp"
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - WG_PORT=51820
+      - PYTHONUNBUFFERED=1
+  robot:
+    build:
+      context: robot
+      dockerfile: Dockerfile
+    depends_on:
+      - server
+    environment:
+      - SERVER_URL=http://server:8000
+      - WG_ENDPOINT=server
+      - WG_PORT=51820
+      - SERVER_VPN_IP=172.16.0.1
+    cap_add:
+      - NET_ADMIN
