@@ -84,7 +84,7 @@ class FoxgloveBridge:
             # Connect to WebSocket server with Foxglove protocol
             self.websocket = await websockets.connect(
                 f"ws://{self.pi_ip}:{self.port}",
-                subprotocols=["foxglove.websocket.v1"],
+                subprotocols=["foxglove.sdk.v1"],
             )
             
             if self.websocket is None:

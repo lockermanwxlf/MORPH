@@ -84,18 +84,16 @@ async def advertise_twist_channel(
         Exception: If WebSocket send fails
     """
     advertise_message = {
-        "op": "advertise",
-        "channels": [
-            {
-                "id": channel_id,
-                "topic": topic,
-                "encoding": ENCODING_JSON,
-                "schemaName": "geometry_msgs/msg/TwistStamped",
-                "schemaEncoding": SCHEMA_ENCODING_ROS2MSG,
-                "schema": TWIST_STAMPED_SCHEMA,
-            }
-        ],
-    }
+            "op": "advertise",
+            "channels": [
+                {
+                    "id": channel_id,
+                    "topic": topic,
+                    "encoding": "json",
+                    "schemaName": "geometry_msgs/msg/TwistStamped",
+                }
+            ],
+        }
     await websocket.send(json.dumps(advertise_message))
 
 
@@ -129,17 +127,11 @@ def build_twist_stamped_frame(
     """
     # Build TwistStamped message
     twist_stamped_data = {
-        "header": {
-            "stamp": {
-                "sec": 0,
-                "nanosec": 0
-            },
-            "frame_id": frame_id
-        },
+        "header": {"stamp": {"sec": 0, "nanosec": 0}, "frame_id": frame_id},
         "twist": {
             "linear": {"x": linear_x, "y": linear_y, "z": linear_z},
-            "angular": {"x": angular_x, "y": angular_y, "z": angular_z}
-        }
+            "angular": {"x": angular_x, "y": angular_y, "z": angular_z},
+        },
     }
     
     # Encode payload as JSON
