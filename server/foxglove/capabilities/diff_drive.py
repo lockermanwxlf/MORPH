@@ -1,5 +1,4 @@
 import json
-import stat
 
 from foxglove.messages.twist_stamped import TwistStamped
 

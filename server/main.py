@@ -1,5 +1,4 @@
 import asyncio
-from dataclasses import dataclass
 from fastapi import FastAPI
 from pydantic import BaseModel
 import socketio
