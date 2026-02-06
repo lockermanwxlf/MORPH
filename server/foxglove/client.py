@@ -1,5 +1,4 @@
 import json
-from turtle import st
 from engineio import AsyncServer
 import websockets
 from websockets import ClientConnection, Subprotocol, State
