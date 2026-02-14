@@ -10,6 +10,7 @@ import {
   SquareFunction,
   StickyNote,
   X,
+  Joystick,
 } from 'lucide-react'
 
 export default function Header() {
@@ -20,23 +21,32 @@ export default function Header() {
 
   return (
     <>
-      <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          aria-label="Open menu"
+      <header className="p-4 flex items-center justify-between bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-lg border-b border-slate-700">
+        <div className="flex items-center">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={24} />
+          </button>
+          <h1 className="ml-4 text-xl font-semibold">
+            <Link to="/">
+              <img
+                src="/morph-word-logo-white.png"
+                alt="MORPH Logo"
+                className="h-10 scale-125 pl-4"
+              />
+            </Link>
+          </h1>
+        </div>
+        <Link
+          to='/control-panel'
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
         >
-          <Menu size={24} />
-        </button>
-        <h1 className="ml-4 text-xl font-semibold">
-          <Link to="/">
-            <img
-              src="/morph-word-logo-white.png"
-              alt="MORPH Logo"
-              className="h-10 scale-125 pl-4"
-            />
-          </Link>
-        </h1>
+          <Joystick size={20} />
+          <span>Controls</span>
+        </Link>
       </header>
 
       <aside

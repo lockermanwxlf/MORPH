@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE service-group SYSTEM "https://raw.githubusercontent.com/avahi/avahi/refs/heads/master/avahi-daemon/avahi-service.dtd">
+<service-group>
+    <name>morph-robot</name>
+    <service>
+        <type>_ws._tcp</type>
+        <port>8765</port>
+    </service>
+</service-group>

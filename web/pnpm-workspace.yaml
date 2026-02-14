@@ -1,0 +1,8 @@
+packages:
+  - .
+  - electron
+
+onlyBuiltDependencies:
+  - electron
+  - electron-winstaller
+  - esbuild

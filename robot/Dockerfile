@@ -2,7 +2,7 @@ FROM ros:humble
 
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt/lists \
-    apt-get update && apt-get install -y ros-${ROS_DISTRO}-foxglove-bridge
+    apt-get update && apt-get install -y ros-${ROS_DISTRO}-foxglove-bridge avahi-daemon
 
 WORKDIR /app
 

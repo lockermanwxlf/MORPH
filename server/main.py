@@ -1,13 +1,24 @@
 import asyncio
 from fastapi import FastAPI
+from fastapi.concurrency import asynccontextmanager
 from pydantic import BaseModel
 import socketio
+from zeroconf import Zeroconf
 
 from foxglove.client import FoxgloveClient
 from foxglove.messages.twist_stamped import TwistStamped
 
 
 app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    zc = Zeroconf()
+
+    yield
+    zc.close()
+
 
 sid_to_client: dict[str, FoxgloveClient] = {}
 clients: dict[str, FoxgloveClient] = {}
@@ -108,6 +119,45 @@ async def diff_drive(sid: str, data: dict):
         0.0,
         0.0,
         direction_to_angular_z.get(direction, 0.0) * speed,
+    )
+
+    client = sid_to_client[sid]
+    await client.send_diff_drive_command(twist)
+
+
+@sio.on("diff_drive_wasd")
+async def handle_diff_drive_wasd(sid: str, data: dict):
+    if sid not in sid_to_client:
+        return
+
+    # Get speed
+    speed = data.get("speed", 0.0)
+    speed = max(100, min(0, speed)) / 100
+
+    # Get twist
+    w = data.get("w", False)
+    a = data.get("a", False)
+    s = data.get("s", False)
+    d = data.get("d", False)
+    direction_to_linear_x = {"w": 0.5, "s": -0.5}
+    direction_to_angular_z = {"a": 0.5, "d": -0.5}
+    twist = TwistStamped(
+        0,
+        0,
+        (
+            (direction_to_linear_x["w"] if w else 0)
+            + (direction_to_linear_x["s"] if s else 0)
+        )
+        * speed,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        (
+            (direction_to_angular_z["a"] if a else 0)
+            + (direction_to_angular_z["d"] if d else 0)
+        )
+        * speed,
     )
 
     client = sid_to_client[sid]
