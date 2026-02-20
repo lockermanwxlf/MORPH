@@ -1,4 +1,6 @@
 import { io, type Socket } from "socket.io-client";
+import { apiUrl } from "./api";
+import { isElectron } from "./runtime";
 
 class RobotConnection {
 	private socket: Socket;
@@ -12,6 +14,7 @@ class RobotConnection {
 			this.socket.connect();
 			this._wsConnected = true;
 		}
+		console.log("HI3");
 		return new Promise((resolve) => {
 			this.socket.emit(
 				"connect_robot",
@@ -20,9 +23,12 @@ class RobotConnection {
 					if (response.status === "ok") {
 						this._robotConnected = true;
 					}
+					console.log("HI5");
+					console.log(response);
 					resolve(response);
 				},
 			);
+			console.log("HI4");
 		});
 	}
 
@@ -37,4 +43,6 @@ class RobotConnection {
 	}
 }
 
-export const robotConnection = new RobotConnection(io());
+export const robotConnection = new RobotConnection(
+	isElectron ? io(apiUrl) : io(),
+);

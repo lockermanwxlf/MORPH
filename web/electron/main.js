@@ -34,6 +34,10 @@ function startBackend() {
 			}
 		});
 
+		pyProcess.stdout.on("data", (data) => {
+			console.log(`server: ${data}`);
+		});
+
 		pyProcess.on("error", (err) => {
 			reject(err);
 		});
@@ -44,6 +48,7 @@ function createWindow() {
 	const win = new BrowserWindow({
 		webPreferences: {
 			preload: path.join(__dirname, "preload.js"),
+			devTools: true,
 		},
 	});
 	const startUrl =

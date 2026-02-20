@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { apiUrl } from "@/utils/api";
 import { robotConnection } from "@/utils/robot-connection";
 
 export const Route = createFileRoute("/connect")({
@@ -59,7 +60,7 @@ function App() {
 	} = useQuery<{ robots: Robot[] }>({
 		queryKey: ["robots"],
 		queryFn: async () => {
-			const response = await fetch("/api/robots");
+			const response = await fetch(`${apiUrl}/robots`);
 			if (!response.ok) throw new Error("Failed to fetch robots");
 			return response.json();
 		},
@@ -72,7 +73,7 @@ function App() {
 		{ host: string; port: number }
 	>({
 		mutationFn: async (variables) => {
-			const response = await fetch("/api/robot/connect", {
+			const response = await fetch(`${apiUrl}/robot/connect`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(variables),
@@ -100,10 +101,13 @@ function App() {
 		setIsRobotConnecting(true);
 		setRobotConnectError(null);
 		try {
+			console.log("HI");
 			const res = await robotConnection.connect(
 				selectedRobot.host,
 				selectedRobot.port,
 			);
+			console.log("HI2");
+
 			const errorMessage = getConnectErrorMessage(res);
 			if (errorMessage) {
 				setRobotConnectError(errorMessage);
@@ -111,6 +115,7 @@ function App() {
 			}
 			navigate({ to: "/dashboard" });
 		} catch (err) {
+			console.error("Connection error:", err);
 			setRobotConnectError(
 				err instanceof Error ? err.message : "Failed to connect",
 			);

@@ -3,27 +3,15 @@ from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from pydantic import BaseModel
 import socketio
-from zeroconf import Zeroconf
+from zeroconf import ServiceBrowser, Zeroconf
+from zeroconf.asyncio import AsyncZeroconf, AsyncServiceBrowser
+from fastapi.middleware.cors import CORSMiddleware
 
+from foxglove.client_manager import ClientManager
 from foxglove.client import FoxgloveClient
 from foxglove.messages.twist_stamped import TwistStamped
-
-
-app = FastAPI()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    zc = Zeroconf()
-
-    yield
-    zc.close()
-
-
-sid_to_client: dict[str, FoxgloveClient] = {}
-clients: dict[str, FoxgloveClient] = {}
-
-connection_lock = asyncio.Lock()
+from robots.robot import Robot
+from robots.robot_listener import RobotListener
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
@@ -32,6 +20,31 @@ sio = socketio.AsyncServer(
     engineio_logger=False,
 )
 
+client_manager = ClientManager(sio=sio)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    zc = Zeroconf()
+    browser = ServiceBrowser(
+        zc, "_morph-ws._tcp.local.", RobotListener(client_manager=client_manager)
+    )
+
+    yield
+    zc.close()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+)
+
+sid_to_client: dict[str, FoxgloveClient] = {}
+
+connection_lock = asyncio.Lock()
+
 
 class ConnectBody(BaseModel):
     host: str
@@ -39,20 +52,21 @@ class ConnectBody(BaseModel):
 
 
 def get_robots_body():
-    return [{"host": client.host, "port": client.port} for client in clients.values()]
+    return [
+        {"host": client.host, "port": client.port} for client in client_manager.clients
+    ]
 
 
 @app.post("/robot/connect")
 async def connect_robot(body: ConnectBody):
     async with connection_lock:
-        if body.host in clients:
+        if body.host in client_manager.ip_to_client:
             return {"status": "already connected", "robots": get_robots_body()}
-        client = FoxgloveClient(body.host, body.port, sio)
+        robot = Robot(ip_addresses=[body.host], port=body.port)
         try:
-            await client.connect()
+            client_manager.add_robot(robot)
         except Exception:
             return {"status": "connection failed", "robots": get_robots_body()}
-        clients[body.host] = client
     return {
         "status": "connected",
         "robots": get_robots_body(),
@@ -89,9 +103,9 @@ async def handle_connect(sid: str, data: dict):
     port = data.get("port")
     if not host or not port:
         return {"status": "error", "message": "host and port required"}
-    if host not in clients:
-        return {"status": "error", "message": "robot not connected"}
-    client = clients[host]
+    if host not in client_manager.ip_to_client:
+        return {"status": "error", "message": "robot ip not recognized"}
+    client = client_manager.ip_to_client[host]
     sid_to_client[sid] = client
     client.set_listener_sid(sid)
     return {"status": "ok", "message": "connected to robot"}
