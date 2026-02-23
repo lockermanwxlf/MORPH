@@ -1,66 +1,31 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Menu, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import type { BluetoothDevice } from "shared/ipc-types";
-
-import { requireBluetoothAPI } from "../utils/preload-apis";
+import { BookOpen, Gamepad2, Home, Joystick, Menu, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useConnectedDevice } from "@/utils/connected-device";
 
 export default function Header() {
 	const [isOpen, setIsOpen] = useState(false);
-	const [devices, setDevices] = useState<BluetoothDevice[]>([]);
-
-	useEffect(() => {
-		let unsubscribeAdded: (() => void) | null = null;
-		let unsubscribeUpdated: (() => void) | null = null;
-		let unsubscribeRemoved: (() => void) | null = null;
-
-		try {
-			const bluetoothAPI = requireBluetoothAPI();
-			void bluetoothAPI.getBluetoothDevices().then(setDevices);
-
-			unsubscribeAdded = bluetoothAPI.onBluetoothDeviceAdded((device) => {
-				setDevices((prev) => {
-					if (prev.some((d) => d.address === device.address)) {
-						return prev.map((d) => (d.address === device.address ? device : d));
-					}
-					return [...prev, device];
-				});
-			});
-
-			unsubscribeUpdated = bluetoothAPI.onBluetoothDeviceUpdated(
-				(updatedDevice) => {
-					setDevices((prev) =>
-						prev.map((device) =>
-							device.address === updatedDevice.address ? updatedDevice : device,
-						),
-					);
-				},
-			);
-
-			unsubscribeRemoved = bluetoothAPI.onBluetoothDeviceRemoved(
-				(removedDevice) => {
-					setDevices((prev) =>
-						prev.filter((device) => device.address !== removedDevice.address),
-					);
-				},
-			);
-		} catch {
-			setDevices([]);
-		}
-
-		return () => {
-			unsubscribeAdded?.();
-			unsubscribeUpdated?.();
-			unsubscribeRemoved?.();
-		};
-	}, []);
+	const { connectedDevice, selectedDevice, isConnecting, error } =
+		useConnectedDevice();
 
 	const deviceLabel = useMemo(() => {
-		if (devices.length === 0) {
+		if (isConnecting) {
+			return "Device: Connecting...";
+		}
+		if (connectedDevice) {
+			return `Device: ${connectedDevice.host}:${connectedDevice.port}`;
+		}
+		if (selectedDevice) {
+			return `Device: Selected ${selectedDevice.host}:${selectedDevice.port}`;
+		}
+		if (error) {
+			return "Device: Connection Error";
+		}
+		if (!selectedDevice) {
 			return "Device: Unconnected";
 		}
-		return `Device: ${devices[0]?.name ?? "Connected"}`;
-	}, [devices]);
+		return "Device: Unconnected";
+	}, [connectedDevice, error, isConnecting, selectedDevice]);
 
 	return (
 		<>
@@ -93,8 +58,21 @@ export default function Header() {
 						>
 							Show device list
 						</Link>
+						<Link
+							to="/control-panel"
+							className="block w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--ink-0)] transition-colors hover:bg-white/10"
+						>
+							Open control panel
+						</Link>
 					</div>
 				</div>
+				<Link
+					to="/control-panel"
+					className="ml-auto inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[rgba(36,199,184,0.14)] px-3 py-2 text-sm font-medium text-[var(--ink-0)] transition-colors hover:bg-[rgba(36,199,184,0.24)]"
+				>
+					<Joystick size={16} />
+					<span>Control Panel</span>
+				</Link>
 			</header>
 
 			<aside
@@ -128,9 +106,31 @@ export default function Header() {
 						<span className="font-medium">Home</span>
 					</Link>
 
-					{/* Demo Links Start */}
+					<Link
+						to="/control-panel"
+						onClick={() => setIsOpen(false)}
+						className="mb-2 flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-white/10"
+						activeProps={{
+							className:
+								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-[var(--brand-soft)] p-3 text-white transition-colors hover:bg-[var(--brand)]",
+						}}
+					>
+						<Gamepad2 size={20} />
+						<span className="font-medium">Control Panel</span>
+					</Link>
 
-					{/* Demo Links End */}
+					<Link
+						to="/lesson"
+						onClick={() => setIsOpen(false)}
+						className="mb-2 flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-white/10"
+						activeProps={{
+							className:
+								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-[var(--brand-soft)] p-3 text-white transition-colors hover:bg-[var(--brand)]",
+						}}
+					>
+						<BookOpen size={20} />
+						<span className="font-medium">Lesson</span>
+					</Link>
 				</nav>
 			</aside>
 		</>

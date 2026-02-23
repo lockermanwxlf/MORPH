@@ -3,6 +3,24 @@ import { io, type Socket } from "socket.io-client";
 import { requireServerAPI } from "./preload-apis";
 
 type GenericSocket = Socket;
+type AckResponse = {
+	status?: "ok" | "error";
+	message?: string;
+	ok?: boolean;
+	error?: string;
+};
+export type DiffDriveDirection =
+	| "forward"
+	| "backward"
+	| "left"
+	| "right"
+	| "stop";
+export interface WasdState {
+	w: boolean;
+	a: boolean;
+	s: boolean;
+	d: boolean;
+}
 
 let managedSocket: GenericSocket | null = null;
 let managedPort: number | null = null;
@@ -35,6 +53,76 @@ export function getManagedSocket(): GenericSocket {
 		throw new Error("Socket has not been initialized yet.");
 	}
 	return managedSocket;
+}
+
+function getResponseMessage(response: AckResponse | null): string {
+	if (!response) {
+		return "Request failed";
+	}
+	if (typeof response.error === "string" && response.error.length > 0) {
+		return response.error;
+	}
+	if (typeof response.message === "string" && response.message.length > 0) {
+		return response.message;
+	}
+	return "Request failed";
+}
+
+function emitWithAck<TResponse extends AckResponse>(
+	socket: GenericSocket,
+	event: string,
+	payload: unknown,
+	timeoutMs: number,
+): Promise<TResponse> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => {
+			reject(new Error(`Timed out waiting for "${event}" response`));
+		}, timeoutMs);
+
+		socket.emit(event, payload, (response: TResponse) => {
+			clearTimeout(timer);
+			if (
+				response?.status === "error" ||
+				(response && "ok" in response && response.ok === false)
+			) {
+				reject(new Error(getResponseMessage(response)));
+				return;
+			}
+			resolve(response);
+		});
+	});
+}
+
+export async function connectRobot(
+	deviceId: string,
+	socket: GenericSocket = getManagedSocket(),
+	timeoutMs = 10_000,
+): Promise<AckResponse> {
+	if (!socket.connected) {
+		socket.connect();
+	}
+	return emitWithAck<AckResponse>(
+		socket,
+		"connect_robot",
+		{ device_id: deviceId },
+		timeoutMs,
+	);
+}
+
+export function sendDiffDrive(
+	direction: DiffDriveDirection,
+	socket: GenericSocket = getManagedSocket(),
+	speed = 100,
+): void {
+	socket.emit("diff_drive", { direction, speed });
+}
+
+export function sendDiffDriveWASD(
+	keys: WasdState,
+	socket: GenericSocket = getManagedSocket(),
+	speed = 100,
+): void {
+	socket.emit("diff_drive_wasd", { ...keys, speed });
 }
 
 export function useSocket() {

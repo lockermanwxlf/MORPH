@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { useConnectedDevice } from "@/utils/connected-device";
 import { requireBluetoothAPI } from "@/utils/preload-apis";
 import { useBluetoothDevices } from "@/utils/useBluetoothDevices";
 import { useMorphDevices } from "@/utils/useMorphDevices";
@@ -28,6 +29,12 @@ type UnifiedDevice =
 function RouteComponent() {
 	const bluetoothDevices = useBluetoothDevices();
 	const { devices: robots, isLoading: isRobotsLoading } = useMorphDevices();
+	const {
+		connectToDevice,
+		connectedDeviceId,
+		isConnecting,
+		error: connectError,
+	} = useConnectedDevice();
 	const unifiedDevices = useMemo<UnifiedDevice[]>(() => {
 		const robotByDeviceId = new Set(
 			robots.map((robot) => robot.deviceId).filter(Boolean),
@@ -152,11 +159,31 @@ function RouteComponent() {
 											</button>
 										</div>
 									</div>
-								) : null}
+								) : (
+									<div className="mt-0 max-h-0 overflow-hidden opacity-0 transition-all duration-200 group-hover:mt-4 group-hover:max-h-24 group-hover:opacity-100">
+										<button
+											type="button"
+											disabled={isConnecting}
+											onClick={() => {
+												void connectToDevice(device.deviceId);
+											}}
+											className="rounded-lg border border-[var(--line)] bg-[rgba(67,166,255,0.15)] px-3 py-2 text-xs font-medium text-[var(--ink-0)] transition-colors hover:bg-[rgba(67,166,255,0.24)] disabled:cursor-not-allowed disabled:opacity-60"
+										>
+											{isConnecting
+												? "Connecting..."
+												: connectedDeviceId === device.deviceId
+													? "Connected"
+													: "Connect"}
+										</button>
+									</div>
+								)}
 							</li>
 						))}
 					</ul>
 				)}
+				{connectError ? (
+					<p className="mt-4 text-sm text-[#ffb7a4]">{connectError}</p>
+				) : null}
 			</section>
 		</div>
 	);

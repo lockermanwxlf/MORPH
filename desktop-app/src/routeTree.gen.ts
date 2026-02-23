@@ -9,12 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LessonRouteImport } from './routes/lesson'
 import { Route as DevicesRouteImport } from './routes/devices'
+import { Route as ControlPanelRouteImport } from './routes/control-panel'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LessonRoute = LessonRouteImport.update({
+  id: '/lesson',
+  path: '/lesson',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevicesRoute = DevicesRouteImport.update({
   id: '/devices',
   path: '/devices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlPanelRoute = ControlPanelRouteImport.update({
+  id: '/control-panel',
+  path: '/control-panel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,37 +37,59 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/control-panel': typeof ControlPanelRoute
   '/devices': typeof DevicesRoute
+  '/lesson': typeof LessonRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/control-panel': typeof ControlPanelRoute
   '/devices': typeof DevicesRoute
+  '/lesson': typeof LessonRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/control-panel': typeof ControlPanelRoute
   '/devices': typeof DevicesRoute
+  '/lesson': typeof LessonRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/devices'
+  fullPaths: '/' | '/control-panel' | '/devices' | '/lesson'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/devices'
-  id: '__root__' | '/' | '/devices'
+  to: '/' | '/control-panel' | '/devices' | '/lesson'
+  id: '__root__' | '/' | '/control-panel' | '/devices' | '/lesson'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ControlPanelRoute: typeof ControlPanelRoute
   DevicesRoute: typeof DevicesRoute
+  LessonRoute: typeof LessonRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/lesson': {
+      id: '/lesson'
+      path: '/lesson'
+      fullPath: '/lesson'
+      preLoaderRoute: typeof LessonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/devices': {
       id: '/devices'
       path: '/devices'
       fullPath: '/devices'
       preLoaderRoute: typeof DevicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/control-panel': {
+      id: '/control-panel'
+      path: '/control-panel'
+      fullPath: '/control-panel'
+      preLoaderRoute: typeof ControlPanelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,7 +104,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ControlPanelRoute: ControlPanelRoute,
   DevicesRoute: DevicesRoute,
+  LessonRoute: LessonRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
