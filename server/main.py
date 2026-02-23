@@ -26,8 +26,11 @@ client_manager = ClientManager(sio=sio)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     zc = Zeroconf()
+    loop = asyncio.get_running_loop()
     browser = ServiceBrowser(
-        zc, "_morph-ws._tcp.local.", RobotListener(client_manager=client_manager)
+        zc,
+        "_morph-ws._tcp.local.",
+        RobotListener(client_manager=client_manager, loop=loop),
     )
 
     yield
@@ -53,24 +56,28 @@ class ConnectBody(BaseModel):
 
 def get_robots_body():
     return [
-        {"host": client.host, "port": client.port} for client in client_manager.clients
+        {"host": client.host, "port": client.port, "device_id": client.device_id}
+        for client in client_manager.clients
     ]
 
 
-@app.post("/robot/connect")
-async def connect_robot(body: ConnectBody):
-    async with connection_lock:
-        if body.host in client_manager.ip_to_client:
-            return {"status": "already connected", "robots": get_robots_body()}
-        robot = Robot(ip_addresses=[body.host], port=body.port)
-        try:
-            client_manager.add_robot(robot)
-        except Exception:
-            return {"status": "connection failed", "robots": get_robots_body()}
-    return {
-        "status": "connected",
-        "robots": get_robots_body(),
-    }
+# TODO: robot needs to host an endpoint that exposes their device_id so client
+# can just type in the IP and port.
+
+# @app.post("/robot/connect")
+# async def connect_robot(body: ConnectBody):
+#    async with connection_lock:
+#        if body.host in client_manager.ip_to_client:
+#            return {"status": "already connected", "robots": get_robots_body()}
+#        robot = Robot(ip_addresses=[body.host], port=body.port)
+#        try:
+#            await client_manager.add_robot(robot)
+#        except Exception:
+#            return {"status": "connection failed", "robots": get_robots_body()}
+#    return {
+#        "status": "connected",
+#        "robots": get_robots_body(),
+#    }
 
 
 @app.get("/robots")
@@ -94,24 +101,39 @@ async def disconnect(sid: str):
         del sid_to_client[sid]
 
 
-@sio.on("connect_robot")
+@sio.on("subscribe")  # type: ignore
+async def handle_subscribe(sid: str, data: dict):
+    topic = data.get("topic")
+    if not topic:
+        return {"status": "error", "message": "topic required"}
+    await sio.enter_room(sid, topic)
+
+
+@sio.on("unsubscribe")  # type: ignore
+async def handle_unsubscribe(sid: str, data: dict):
+    topic = data.get("topic")
+    if not topic:
+        return {"status": "error", "message": "topic required"}
+    await sio.leave_room(sid, topic)
+
+
+@sio.on("connect_robot")  # type: ignore
 async def handle_connect(sid: str, data: dict):
     print(data)
     if not isinstance(data, dict):
         return {"status": "error", "message": "payload must be an object"}
-    host = data.get("host")
-    port = data.get("port")
-    if not host or not port:
-        return {"status": "error", "message": "host and port required"}
-    if host not in client_manager.ip_to_client:
-        return {"status": "error", "message": "robot ip not recognized"}
-    client = client_manager.ip_to_client[host]
+    device_id = data.get("device_id")
+    if not device_id:
+        return {"status": "error", "message": "device_id required"}
+    if device_id not in client_manager.device_id_to_client:
+        return {"status": "error", "message": "robot device_id not recognized"}
+    client = client_manager.device_id_to_client[device_id]
     sid_to_client[sid] = client
     client.set_listener_sid(sid)
     return {"status": "ok", "message": "connected to robot"}
 
 
-@sio.on("diff_drive")
+@sio.on("diff_drive")  # type: ignore
 async def diff_drive(sid: str, data: dict):
     if sid not in sid_to_client:
         return
@@ -139,7 +161,7 @@ async def diff_drive(sid: str, data: dict):
     await client.send_diff_drive_command(twist)
 
 
-@sio.on("diff_drive_wasd")
+@sio.on("diff_drive_wasd")  # type: ignore
 async def handle_diff_drive_wasd(sid: str, data: dict):
     if sid not in sid_to_client:
         return

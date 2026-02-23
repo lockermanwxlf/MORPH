@@ -5,3 +5,4 @@ from dataclasses import dataclass
 class Robot:
     ip_addresses: list[str]
     port: int
+    device_id: str

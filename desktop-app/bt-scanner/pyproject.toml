@@ -1,9 +1,9 @@
 [project]
-name = "broadcast"
+name = "bt-scanner"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "zeroconf>=0.148.0",
+    "bleak>=0.22.3",
 ]

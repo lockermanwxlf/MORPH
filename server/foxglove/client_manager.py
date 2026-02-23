@@ -1,30 +1,50 @@
+from socketio import AsyncServer
+
 from foxglove.client import FoxgloveClient
 from robots.robot import Robot
 
 
 class ClientManager:
-    def __init__(self, sio):
+    def __init__(self, sio: AsyncServer):
         self.sio = sio
         self.clients: list[FoxgloveClient] = []
-        self.ip_to_client: dict[str, FoxgloveClient] = {}
+        self.device_id_to_client: dict[str, FoxgloveClient] = {}
 
     async def add_robot(self, robot: Robot):
         client = FoxgloveClient(robot, self.sio)
-        if any(ip in self.ip_to_client for ip in robot.ip_addresses):
-            print(f"Already connected to robot at {robot.ip_addresses}, skipping")
+        if robot.device_id in self.device_id_to_client:
+            print(f"Already connected to robot {robot.device_id}, skipping")
             return
 
         self.clients.append(client)
-        for ip in robot.ip_addresses:
-            self.ip_to_client[ip] = client
+        self.device_id_to_client[robot.device_id] = client
+
+        await self.sio.emit(
+            "robot_added",
+            {
+                "host": robot.ip_addresses[0],
+                "port": robot.port,
+                "device_id": robot.device_id,
+            },
+            to="robots",
+        )
+
         await client.connect()
 
-    async def remove_robot(self, robot: Robot):
-        clients = [self.ip_to_client.get(ip) for ip in robot.ip_addresses]
-        clients = [c for c in clients if c]
-        for client in clients:
+    async def remove_robot(self, device_id: str):
+        client = self.device_id_to_client.get(device_id)
+        if not client:
+            return
+
+        if client._ws:
             await client._ws.close()
-            self.clients.remove(client)
-        for ip in robot.ip_addresses:
-            if ip in self.ip_to_client:
-                del self.ip_to_client[ip]
+        self.clients.remove(client)
+        del self.device_id_to_client[device_id]
+
+        await self.sio.emit(
+            "robot_removed",
+            {
+                "device_id": device_id,
+            },
+            to="robots",
+        )

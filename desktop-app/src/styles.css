@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/* App theme */
+:root {
+  --bg-0: #070b12;
+  --bg-1: #0f1725;
+  --ink-0: #e8eef9;
+  --ink-1: #99a8bf;
+  --line: #25344c;
+  --brand: #24c7b8;
+  --brand-soft: #1a6f88;
+  --surface: rgba(10, 18, 31, 0.78);
+}
+
+body {
+  @apply m-0 min-h-dvh;
+  font-family: "Sora", "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink-0);
+  background:
+    radial-gradient(900px 500px at 15% -5%, rgba(36, 199, 184, 0.17), transparent 60%),
+    radial-gradient(800px 480px at 90% 0%, rgba(26, 111, 136, 0.22), transparent 62%),
+    linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}

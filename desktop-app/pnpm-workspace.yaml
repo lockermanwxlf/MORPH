@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@abandonware/bluetooth-hci-socket'
+  - '@abandonware/noble'
+  - electron
+  - electron-winstaller
+  - esbuild
+  - usb

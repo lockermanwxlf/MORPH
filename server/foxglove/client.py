@@ -1,5 +1,5 @@
 import json
-from engineio import AsyncServer
+from socketio import AsyncServer
 import websockets
 from websockets import ClientConnection, Subprotocol, State
 
@@ -10,8 +10,10 @@ from robots.robot import Robot
 
 class FoxgloveClient:
     def __init__(self, robot: Robot, sio: AsyncServer):
+        self.robot = robot
         self.host = robot.ip_addresses[0]
         self.port = robot.port
+        self.device_id = robot.device_id
         self._ws: ClientConnection | None = None
         self.channel_id = 1
         self.sio = sio
