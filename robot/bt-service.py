@@ -2,8 +2,10 @@
 """BlueZ GATT service + LE advertisement for Debian/Linux."""
 
 import asyncio
+import json
 import signal
 from pathlib import Path
+import subprocess
 from typing import Any
 
 from dbus_fast import BusType, PropertyAccess, Variant
@@ -28,6 +30,51 @@ ADV_MIN_INTERVAL_MS = 200
 ADV_MAX_INTERVAL_MS = 300
 DEVICE_ID_PATH = Path("/etc/morph/device_id")
 
+# Wifi hotspot stuff
+WIFI_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3"
+WIFI_CHAR_PATH = "/com/morph/app/service0/char1"
+
+
+class WifiProvisioningCharacteristic(ServiceInterface):
+    def __init__(self) -> None:
+        super().__init__("org.bluez.GattCharacteristic1")
+        self.value = b""
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Service(self) -> "o":
+        return SERVICE_PATH
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return WIFI_CHAR_UUID
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Flags(self) -> "as":
+        return ["write"]
+
+    @method()
+    def WriteValue(self, value: "ay", _options: "a{sv}") -> None:
+        self.value = bytes(value)
+        try:
+            payload = json.loads(self.value.decode("utf-8"))
+            ssid = payload.get("ssid")
+            psk = payload.get("psk")
+            if ssid and psk:
+                print(f"Received WiFi provisioning data: SSID={ssid}, PSK={psk}")
+                result = subprocess.run(
+                    ["nmcli", "device", "wifi", "connect", ssid, "password", psk],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    print(f"Successfully connected to WiFi network '{ssid}'")
+                else:
+                    print(
+                        f"Failed to connect to WiFi network '{ssid}': {result.stderr}"
+                    )
+        except Exception as e:
+            print(f"Error processing WiFi provisioning data: {e}")
+
 
 class Application(ServiceInterface):
     def __init__(self) -> None:
@@ -49,6 +96,13 @@ class Application(ServiceInterface):
                     "UUID": Variant("s", CHAR_UUID),
                     "Flags": Variant("as", ["read"]),
                     "Value": Variant("ay", b"ready"),
+                }
+            },
+            WIFI_CHAR_PATH: {
+                "org.bluez.GattCharacteristic1": {
+                    "Service": Variant("o", SERVICE_PATH),
+                    "UUID": Variant("s", WIFI_CHAR_UUID),
+                    "Flags": Variant("as", ["write"]),
                 }
             },
         }
@@ -112,15 +166,16 @@ class Advertisement(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def LocalName(self) -> "s":
-        return "MorphRobot"
+        return "Morph"
+
+    @dbus_property(access=PropertyAccess.READ)
+    def ManufacturerData(self) -> "a{qv}":
+        payload_bytes = f"ID={self.device_id}".encode("utf-8")
+        return {0xFFFF: Variant("ay", payload_bytes)}
 
     @dbus_property(access=PropertyAccess.READ)
     def Includes(self) -> "as":
         return ["tx-power"]
-
-    @dbus_property(access=PropertyAccess.READ)
-    def ServiceData(self) -> "a{sv}":
-        return {SERVICE_UUID: Variant("ay", f"DEVICE_ID={self.device_id}".encode("utf-8"))}
 
     @dbus_property(access=PropertyAccess.READ)
     def MinInterval(self) -> "u":
@@ -161,11 +216,13 @@ async def main() -> None:
     app = Application()
     svc = GattService()
     ch = GattCharacteristic()
+    wifi_ch = WifiProvisioningCharacteristic()
     adv = Advertisement(device_id)
 
     bus.export(APP_PATH, app)
     bus.export(SERVICE_PATH, svc)
     bus.export(CHAR_PATH, ch)
+    bus.export(WIFI_CHAR_PATH, wifi_ch)
     bus.export(ADV_PATH, adv)
 
     adapter_intro = await bus.introspect(BLUEZ_SERVICE, adapter_path)
@@ -191,6 +248,7 @@ async def main() -> None:
     await adv_mgr.call_unregister_advertisement(ADV_PATH)
     await gatt_mgr.call_unregister_application(APP_PATH)
     bus.unexport(ADV_PATH)
+    bus.unexport(WIFI_CHAR_PATH)
     bus.unexport(CHAR_PATH)
     bus.unexport(SERVICE_PATH)
     bus.unexport(APP_PATH)

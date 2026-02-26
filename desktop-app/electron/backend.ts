@@ -94,7 +94,7 @@ export function createBackendManager(options: BackendManagerOptions = {}) {
 
 			backendProcess = spawn(
 				"uv",
-				["run", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "0"],
+				["run", "uvicorn", "main:app", "--host", "::1", "--port", "0"],
 				{
 					cwd: backendCwd,
 					stdio: ["ignore", "pipe", "pipe"],

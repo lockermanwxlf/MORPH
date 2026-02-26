@@ -26,7 +26,7 @@ let managedSocket: GenericSocket | null = null;
 let managedPort: number | null = null;
 
 function createSocket(port: number): GenericSocket {
-	return io(`http://127.0.0.1:${port}`, {
+	return io(`http://[::1]:${port}`, {
 		transports: ["websocket"],
 		autoConnect: true,
 		reconnection: true,

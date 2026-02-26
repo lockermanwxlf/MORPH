@@ -75,7 +75,7 @@ export function useMorphDevices() {
 		queryKey: MORPH_DEVICES_QUERY_KEY,
 		queryFn: async () => {
 			const port = await serverAPI.getPort();
-			const response = await fetch(`http://localhost:${port}/robots`);
+			const response = await fetch(`http://[::1]:${port}/robots`);
 			const data = (await response.json()) as unknown;
 			return normalizeDevices(data);
 		},
