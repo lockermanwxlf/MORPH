@@ -10,6 +10,14 @@ SERVICE_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fa"
 DISAPPEAR_TIMEOUT_SECONDS = 8.0
 CHECK_INTERVAL_SECONDS = 0.5
 
+@dataclass
+class BluetoothDevice:
+    name: str
+    address: str
+    rssi: int
+    device_id: str | None
+    network_state: int | None
+
 seen_devices: dict[str, dict] = {}
 
 
@@ -41,8 +49,8 @@ def extract_advertisement_info(
         ]
     }
     return ManufacturerData(
-        device_id=data.get("device_id"),
-        network_state=int(data["network_state"]) if "network_state" in data else None,
+        device_id=data.get("ID"),
+        network_state=int(data["ST"]) if "ST" in data else None,
     )
 
 

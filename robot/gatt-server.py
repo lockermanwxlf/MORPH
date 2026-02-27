@@ -34,9 +34,90 @@ ADV_MIN_INTERVAL_MS = 200
 ADV_MAX_INTERVAL_MS = 300
 DEVICE_ID_PATH = Path("/etc/morph/device_id")
 
+# Global network state counter
+network_state_counter = 0
+
 # Wifi hotspot stuff
 WIFI_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3"
 WIFI_CHAR_PATH = "/com/morph/app/service0/char1"
+
+
+# ssid request
+WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd"
+WIFI_STATUS_CHAR_PATH = "/com/morph/app/service0/char2"
+
+
+class WifiStatusCharacteristic(ServiceInterface):
+    def __init__(self) -> None:
+        super().__init__("org.bluez.GattCharacteristic1")
+        self.cached_network_state = None
+        self.cached_payload = b""
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Service(self) -> "o":
+        return SERVICE_PATH
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return WIFI_STATUS_CHAR_UUID
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Flags(self) -> "as":
+        return ["read"]
+
+    async def update_cached_value(self) -> None:
+        if self.cached_network_state != network_state_counter:
+            ssid = ""
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "nmcli",
+                    "-t",
+                    "-f",
+                    "active,ssid",
+                    "device",
+                    "wifi",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, _ = await proc.communicate()
+
+                if proc.returncode == 0:
+                    lines = stdout.decode().strip().splitlines()
+                    ssid = next(
+                        (line[4:] for line in lines if line.startswith("yes:")), ""
+                    )
+            except Exception as e:
+                print(f"Error fetching current WiFi SSID: {e}")
+            self.cached_network_state = network_state_counter
+            self.cached_payload = json.dumps(
+                {"ssid": ssid, "st": network_state_counter}
+            ).encode("utf-8")
+
+    @method()
+    async def ReadValue(self, _options: "a{sv}") -> "ay":
+        offset = 0
+        if "offset" in _options:
+            offset = _options["offset"].value
+
+        # 1. Determine the maximum allowed payload size for this specific read
+        # The BLE standard default MTU is 23 bytes. 1 byte is used for the read opcode.
+        # So the default safe payload is 22 bytes. We use 20 to be universally safe.
+        mtu_payload_limit = 20
+
+        if "mtu" in _options:
+            # If BlueZ tells us the exact negotiated MTU, use it (minus 1 for the opcode)
+            mtu_payload_limit = _options["mtu"].value - 1
+
+        # 2. Slice the payload so BlueZ never receives an array larger than it can transmit
+        chunk = self.cached_payload[offset : offset + mtu_payload_limit]
+
+        print(
+            f"Read requested | Offset: {offset} | MTU Limit: {mtu_payload_limit} | Sending {len(chunk)} bytes",
+            flush=True,
+        )
+        print(self.cached_payload.decode("utf-8"), flush=True)
+
+        return chunk
 
 
 class WifiProvisioningCharacteristic(ServiceInterface):
@@ -109,6 +190,13 @@ class Application(ServiceInterface):
                     "Flags": Variant("as", ["write"]),
                 }
             },
+            WIFI_STATUS_CHAR_PATH: {
+                "org.bluez.GattCharacteristic1": {
+                    "Service": Variant("o", SERVICE_PATH),
+                    "UUID": Variant("s", WIFI_STATUS_CHAR_UUID),
+                    "Flags": Variant("as", ["read"]),
+                }
+            },
         }
 
 
@@ -159,11 +247,10 @@ class Advertisement(ServiceInterface):
     def __init__(self, device_id: str) -> None:
         super().__init__("org.bluez.LEAdvertisement1")
         self.device_id = device_id
-        self.network_state_counter = 0
 
     def increment_network_state(self) -> None:
-        self.network_state_counter += 1
-        self.emit_properties_changed({"ManufacturerData": self.ManufacturerData})
+        global network_state_counter
+        network_state_counter += 1
 
     @dbus_property(access=PropertyAccess.READ)
     def Type(self) -> "s":
@@ -179,7 +266,9 @@ class Advertisement(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def ManufacturerData(self) -> "a{qv}":
-        payload_bytes = f"ID={self.device_id},ST={self.network_state_counter}".encode("utf-8")
+        payload_bytes = f"ID={self.device_id},ST={network_state_counter}".encode(
+            "utf-8"
+        )
         return {0xFFFF: Variant("ay", payload_bytes)}
 
     @dbus_property(access=PropertyAccess.READ)
@@ -227,12 +316,18 @@ async def main() -> None:
     ch = GattCharacteristic()
     wifi_ch = WifiProvisioningCharacteristic()
     adv = Advertisement(device_id)
+    wifi_status_ch = WifiStatusCharacteristic()
+
+    # Fetch initial wifi state
+    print("Fetching initial WiFi state...", flush=True)
+    await wifi_status_ch.update_cached_value()
 
     bus.export(APP_PATH, app)
     bus.export(SERVICE_PATH, svc)
     bus.export(CHAR_PATH, ch)
     bus.export(WIFI_CHAR_PATH, wifi_ch)
     bus.export(ADV_PATH, adv)
+    bus.export(WIFI_STATUS_CHAR_PATH, wifi_status_ch)
 
     adapter_intro = await bus.introspect(BLUEZ_SERVICE, adapter_path)
     adapter_obj = bus.get_proxy_object(BLUEZ_SERVICE, adapter_path, adapter_intro)
@@ -249,13 +344,23 @@ async def main() -> None:
     ) -> None:
         if interface_name == "org.freedesktop.NetworkManager":
             if "State" in changed_properties:
-                new_state = changed_properties["State"].value
-                print(f"NetworkManager State changed to: {new_state}", flush=True)
-                adv.increment_network_state()
+                pass
+                # new_state = changed_properties["State"].value
+                # print(f"NetworkManager State changed to: {new_state}", flush=True)
+                # adv.increment_network_state()
 
             elif "PrimaryConnection" in changed_properties:
                 print("Primary active connection changed.", flush=True)
-                adv.increment_network_state()
+
+                async def sync_network_state():
+                    global network_state_counter
+                    network_state_counter += 1
+                    await wifi_status_ch.update_cached_value()
+                    adv.emit_properties_changed(
+                        {"ManufacturerData": adv.ManufacturerData}
+                    )
+
+                asyncio.create_task(sync_network_state())
 
     props_iface.on_properties_changed(on_network_state_changed)
 
@@ -278,6 +383,7 @@ async def main() -> None:
     await gatt_mgr.call_unregister_application(APP_PATH)
     bus.unexport(ADV_PATH)
     bus.unexport(WIFI_CHAR_PATH)
+    bus.unexport(WIFI_STATUS_CHAR_PATH)
     bus.unexport(CHAR_PATH)
     bus.unexport(SERVICE_PATH)
     bus.unexport(APP_PATH)
