@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 import json
 import time
 from bleak import BleakScanner
@@ -16,24 +17,33 @@ def publish_event(event_type: str, payload: dict) -> None:
     print(json.dumps({"event": event_type, **payload}), flush=True)
 
 
-def extract_device_id(advertisement_data: AdvertisementData) -> str | None:
-    service_data = advertisement_data.service_data or {}
-    for uuid, value in service_data.items():
-        if uuid.lower() != SERVICE_UUID.lower():
-            continue
+@dataclass
+class ManufacturerData:
+    device_id: str | None
+    network_state: int | None
 
-        try:
-            decoded = bytes(value).decode("utf-8", errors="ignore")
-        except Exception:
-            return None
 
-        if decoded.startswith("DEVICE_ID="):
-            device_id = decoded.split("=", 1)[1].strip()
-            return device_id or None
+def extract_advertisement_info(
+    advertisement_data: AdvertisementData,
+) -> ManufacturerData:
+    if (
+        not advertisement_data.manufacturer_data
+        or 0xFFFF not in advertisement_data.manufacturer_data
+    ):
+        return ManufacturerData(device_id=None, network_state=None)
 
-        return None
-
-    return None
+    data = advertisement_data.manufacturer_data[0xFFFF]
+    data = bytes(data).decode("utf-8")
+    data = {
+        key.strip(): value.strip()
+        for (key, value) in [
+            part.split("=", 1) for part in data.split(",") if "=" in part
+        ]
+    }
+    return ManufacturerData(
+        device_id=data.get("device_id"),
+        network_state=int(data["network_state"]) if "network_state" in data else None,
+    )
 
 
 def callback(device: BLEDevice, advertisement_data: AdvertisementData) -> None:
@@ -43,7 +53,9 @@ def callback(device: BLEDevice, advertisement_data: AdvertisementData) -> None:
 
     now = time.monotonic()
     address = device.address
-    device_id = extract_device_id(advertisement_data)
+    manufacturer_data = extract_advertisement_info(advertisement_data)
+    device_id = manufacturer_data.device_id
+    network_state = manufacturer_data.network_state
 
     if address not in seen_devices:
         publish_event(
@@ -53,12 +65,14 @@ def callback(device: BLEDevice, advertisement_data: AdvertisementData) -> None:
                 "address": address,
                 "rssi": advertisement_data.rssi,
                 "device_id": device_id,
+                "network_state": network_state,
             },
         )
     elif (
         seen_devices[address]["rssi"] != advertisement_data.rssi
         or seen_devices[address]["name"] != (device.name or device.address)
         or seen_devices[address]["device_id"] != device_id
+        or seen_devices[address].get("network_state") != network_state
     ):
         publish_event(
             "update",
@@ -67,6 +81,7 @@ def callback(device: BLEDevice, advertisement_data: AdvertisementData) -> None:
                 "address": address,
                 "rssi": advertisement_data.rssi,
                 "device_id": device_id,
+                "network_state": network_state,
             },
         )
 
@@ -75,6 +90,7 @@ def callback(device: BLEDevice, advertisement_data: AdvertisementData) -> None:
         "address": address,
         "rssi": advertisement_data.rssi,
         "device_id": device_id,
+        "network_state": network_state,
         "last_seen": now,
     }
 
@@ -97,6 +113,7 @@ async def monitor_disappeared_devices() -> None:
                     "address": data["address"],
                     "rssi": data["rssi"],
                     "device_id": data["device_id"],
+                    "network_state": data.get("network_state"),
                 },
             )
 

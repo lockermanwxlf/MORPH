@@ -22,6 +22,10 @@ SERVICE_PATH = "/com/morph/app/service0"
 CHAR_PATH = "/com/morph/app/service0/char0"
 ADV_PATH = "/com/morph/advertisement0"
 
+NM_SERVICE = "org.freedesktop.NetworkManager"
+NM_PATH = "/org/freedesktop/NetworkManager"
+NM_IFACE = "org.freedesktop.NetworkManager"
+
 SERVICE_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fa"
 CHAR_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fb"
 # Advertising interval in milliseconds (BlueZ accepts 20ms to 10,485s).
@@ -155,6 +159,11 @@ class Advertisement(ServiceInterface):
     def __init__(self, device_id: str) -> None:
         super().__init__("org.bluez.LEAdvertisement1")
         self.device_id = device_id
+        self.network_state_counter = 0
+
+    def increment_network_state(self) -> None:
+        self.network_state_counter += 1
+        self.emit_properties_changed({"ManufacturerData": self.ManufacturerData})
 
     @dbus_property(access=PropertyAccess.READ)
     def Type(self) -> "s":
@@ -170,7 +179,7 @@ class Advertisement(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def ManufacturerData(self) -> "a{qv}":
-        payload_bytes = f"ID={self.device_id}".encode("utf-8")
+        payload_bytes = f"ID={self.device_id},ST={self.network_state_counter}".encode("utf-8")
         return {0xFFFF: Variant("ay", payload_bytes)}
 
     @dbus_property(access=PropertyAccess.READ)
@@ -229,6 +238,26 @@ async def main() -> None:
     adapter_obj = bus.get_proxy_object(BLUEZ_SERVICE, adapter_path, adapter_intro)
     gatt_mgr = adapter_obj.get_interface(GATT_MANAGER_IFACE)
     adv_mgr = adapter_obj.get_interface(LE_ADV_MANAGER_IFACE)
+
+    # Listen for network changes
+    nm_intro = await bus.introspect(NM_SERVICE, NM_PATH)
+    nm_obj = bus.get_proxy_object(NM_SERVICE, NM_PATH, nm_intro)
+    props_iface = nm_obj.get_interface("org.freedesktop.DBus.Properties")
+
+    def on_network_state_changed(
+        interface_name: str, changed_properties: dict, invalidated_properties: list
+    ) -> None:
+        if interface_name == "org.freedesktop.NetworkManager":
+            if "State" in changed_properties:
+                new_state = changed_properties["State"].value
+                print(f"NetworkManager State changed to: {new_state}", flush=True)
+                adv.increment_network_state()
+
+            elif "PrimaryConnection" in changed_properties:
+                print("Primary active connection changed.", flush=True)
+                adv.increment_network_state()
+
+    props_iface.on_properties_changed(on_network_state_changed)
 
     await gatt_mgr.call_register_application(APP_PATH, {})
     await adv_mgr.call_register_advertisement(ADV_PATH, {})
