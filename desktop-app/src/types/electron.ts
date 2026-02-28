@@ -10,22 +10,16 @@ export interface BluetoothAPI {
 	stopBluetoothScan: () => void;
 	openHotspotSettings: () => Promise<OpenSettingsResult>;
 	openBluetoothSettings: () => Promise<OpenSettingsResult>;
-	onBluetoothDeviceAdded: (
-		callback: (device: BluetoothDevice) => void,
-	) => Unsubscribe;
 	onBluetoothDeviceRemoved: (
 		callback: (device: BluetoothDevice) => void,
 	) => Unsubscribe;
 	onBluetoothDeviceUpdated: (
 		callback: (device: BluetoothDevice) => void,
 	) => Unsubscribe;
-	onBluetoothDeviceFound: (
-		callback: (device: BluetoothDevice) => void,
-	) => Unsubscribe;
-	onBluetoothDeviceLost: (
-		callback: (device: BluetoothDevice) => void,
-	) => Unsubscribe;
-	onBluetoothScanning: (callback: (active: boolean) => void) => Unsubscribe;
+}
+
+export interface WifiAPI {
+	getHostSSID: () => Promise<string | null>;
 }
 
 export interface ServerAPI {
@@ -36,6 +30,7 @@ export interface ServerAPI {
 declare global {
 	interface Window {
 		bluetoothAPI?: BluetoothAPI;
+		wifiAPI?: WifiAPI;
 		serverAPI?: ServerAPI;
 	}
 }

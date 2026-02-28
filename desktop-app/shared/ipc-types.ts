@@ -1,9 +1,9 @@
 export interface BluetoothDevice {
-	name: string;
 	address: string;
-	rssi: number | null;
-	lastSeen: number;
+	name: string;
+	rssi: number;
 	deviceId: string;
+	networkSSID: string | null;
 }
 
 export interface OpenSettingsResult {
@@ -12,3 +12,7 @@ export interface OpenSettingsResult {
 }
 
 export type Unsubscribe = () => void;
+
+export interface HostCapabilities {
+	supportsBluetoothTethering: boolean;
+}

@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { app, BrowserWindow, ipcMain } from "electron";
 
 import { createBackendManager } from "./backend";
@@ -7,7 +9,7 @@ import {
 	openBluetoothSettings,
 	openHotspotSettings,
 } from "./bluetooth-tethering";
-import { createBluetoothScannerManager } from "./bt-scanner";
+import { createScannerManager } from "./bt-scanner";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,23 +26,12 @@ function broadcast(channel: string, payload: unknown) {
 	mainWindow.webContents.send(channel, payload);
 }
 
-const bluetoothScanner = createBluetoothScannerManager({
-	onDeviceAdded: (device) => {
-		broadcast("bluetooth:device-added", device);
-		broadcast("bluetooth:device-found", device);
-	},
-	onDeviceRemoved: (device) => {
-		broadcast("bluetooth:device-removed", device);
-		broadcast("bluetooth:device-lost", device);
-	},
-	onDeviceUpdated: (device) => {
+const scannerManager = createScannerManager({
+	onDeviceUpdated(device) {
 		broadcast("bluetooth:device-updated", device);
 	},
-	onScanningChanged: (active) => {
-		broadcast("bluetooth:scanning", active);
-	},
-	onError: (error) => {
-		console.error("Bluetooth scanner error:", error);
+	onDeviceRemoved(device) {
+		broadcast("bluetooth:device-removed", device);
 	},
 });
 
@@ -86,29 +77,30 @@ app.whenReady().then(async () => {
 
 	createWindow();
 
-	ipcMain.handle("bluetooth:get-devices", () => bluetoothScanner.getDevices());
-	ipcMain.on("bluetooth:start-scan", () => bluetoothScanner.start());
-	ipcMain.on("bluetooth:stop-scan", () => bluetoothScanner.stop());
+	ipcMain.handle("bluetooth:get-devices", () => scannerManager.getDevices());
+	ipcMain.on("bluetooth:start-scan", () => scannerManager.start());
+	ipcMain.on("bluetooth:stop-scan", () => scannerManager.stop());
 	ipcMain.handle("bluetooth:open-hotspot-settings", () =>
 		openHotspotSettings(),
 	);
-	ipcMain.handle("bluetooth:open-settings", () =>
-		openBluetoothSettings(),
-	);
+	ipcMain.handle("wifi:get-host-ssid", () => {
+		return "";
+	});
+	ipcMain.handle("bluetooth:open-settings", () => openBluetoothSettings());
 	ipcMain.handle("server:get-port", () => backendManager.getPort());
 
-	bluetoothScanner.start();
+	scannerManager.start();
 });
 
 app.on("before-quit", () => {
-	bluetoothScanner.dispose();
+	scannerManager.cleanup();
 	backendManager.dispose();
 });
 
 app.on("window-all-closed", () => {
 	backendManager.dispose();
 
-	if (process.platform !== "darwin") {
-		app.quit();
-	}
+	//if (process.platform !== "darwin") {
+	app.quit();
+	//}
 });

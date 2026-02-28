@@ -28,6 +28,7 @@ class BluetoothDevice:
     device_id: str
     network_ssid: str | None
     network_state: int
+    active: bool
 
 
 def publish(event: Literal["updated", "removed"], device: BluetoothDevice) -> None:
@@ -35,6 +36,7 @@ def publish(event: Literal["updated", "removed"], device: BluetoothDevice) -> No
         json.dumps(
             {
                 "event": event,
+                "name": device.name,
                 "address": device.address,
                 "rssi": device.rssi,
                 "deviceId": device.device_id,
@@ -92,6 +94,7 @@ async def fetch_ssid_for_device(address: str) -> None:
             )
             wifi_status = bytes(wifi_status).decode("utf-8")
             wifi_status = json.loads(wifi_status)
+            log_debug(wifi_status)
             ssid = wifi_status.get("ssid")
         except Exception as e:
             log_debug(f"Error fetching SSID for device {address}: {e}")
@@ -128,6 +131,7 @@ def advertisement_callback(
         device_id=manufacturer_data.device_id or "",
         network_ssid=device.network_ssid if device else None,
         network_state=manufacturer_data.network_state or 0,
+        active=True,
     )
     publish("updated", devices[ble_device.address])
 
@@ -137,7 +141,9 @@ def remove_stale_devices() -> None:
     for address in list(devices.keys()):
         elapsed = now - devices_last_seen[address]
         if elapsed > DEVICE_STALE_TIMEOUT:
-            publish("removed", devices[address])
+            if devices[address].active:
+                devices[address].active = False
+                publish("removed", devices[address])
         if elapsed > DEVICE_REMOVAL_TIMEOUT:
             del devices[address]
             del devices_last_seen[address]

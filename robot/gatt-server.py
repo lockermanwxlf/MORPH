@@ -95,29 +95,7 @@ class WifiStatusCharacteristic(ServiceInterface):
 
     @method()
     async def ReadValue(self, _options: "a{sv}") -> "ay":
-        offset = 0
-        if "offset" in _options:
-            offset = _options["offset"].value
-
-        # 1. Determine the maximum allowed payload size for this specific read
-        # The BLE standard default MTU is 23 bytes. 1 byte is used for the read opcode.
-        # So the default safe payload is 22 bytes. We use 20 to be universally safe.
-        mtu_payload_limit = 20
-
-        if "mtu" in _options:
-            # If BlueZ tells us the exact negotiated MTU, use it (minus 1 for the opcode)
-            mtu_payload_limit = _options["mtu"].value - 1
-
-        # 2. Slice the payload so BlueZ never receives an array larger than it can transmit
-        chunk = self.cached_payload[offset : offset + mtu_payload_limit]
-
-        print(
-            f"Read requested | Offset: {offset} | MTU Limit: {mtu_payload_limit} | Sending {len(chunk)} bytes",
-            flush=True,
-        )
-        print(self.cached_payload.decode("utf-8"), flush=True)
-
-        return chunk
+        return self.cached_payload
 
 
 class WifiProvisioningCharacteristic(ServiceInterface):

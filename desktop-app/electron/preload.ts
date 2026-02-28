@@ -13,14 +13,6 @@ contextBridge.exposeInMainWorld("bluetoothAPI", {
 		ipcRenderer.invoke("bluetooth:open-hotspot-settings"),
 	openBluetoothSettings: (): Promise<OpenSettingsResult> =>
 		ipcRenderer.invoke("bluetooth:open-settings"),
-	onBluetoothDeviceAdded: (
-		callback: (device: BluetoothDevice) => void,
-	): Unsubscribe => {
-		const listener = (_event: unknown, device: BluetoothDevice) =>
-			callback(device);
-		ipcRenderer.on("bluetooth:device-added", listener);
-		return () => ipcRenderer.removeListener("bluetooth:device-added", listener);
-	},
 	onBluetoothDeviceRemoved: (
 		callback: (device: BluetoothDevice) => void,
 	): Unsubscribe => {
@@ -39,27 +31,10 @@ contextBridge.exposeInMainWorld("bluetoothAPI", {
 		return () =>
 			ipcRenderer.removeListener("bluetooth:device-updated", listener);
 	},
-	onBluetoothDeviceFound: (
-		callback: (device: BluetoothDevice) => void,
-	): Unsubscribe => {
-		const listener = (_event: unknown, device: BluetoothDevice) =>
-			callback(device);
-		ipcRenderer.on("bluetooth:device-found", listener);
-		return () => ipcRenderer.removeListener("bluetooth:device-found", listener);
-	},
-	onBluetoothDeviceLost: (
-		callback: (device: BluetoothDevice) => void,
-	): Unsubscribe => {
-		const listener = (_event: unknown, device: BluetoothDevice) =>
-			callback(device);
-		ipcRenderer.on("bluetooth:device-lost", listener);
-		return () => ipcRenderer.removeListener("bluetooth:device-lost", listener);
-	},
-	onBluetoothScanning: (callback: (active: boolean) => void): Unsubscribe => {
-		const listener = (_event: unknown, active: boolean) => callback(active);
-		ipcRenderer.on("bluetooth:scanning", listener);
-		return () => ipcRenderer.removeListener("bluetooth:scanning", listener);
-	},
+});
+
+contextBridge.exposeInMainWorld("wifiAPI", {
+	getHostSSID: () => ipcRenderer.invoke("wifi:get-host-ssid"),
 });
 
 contextBridge.exposeInMainWorld("serverAPI", {

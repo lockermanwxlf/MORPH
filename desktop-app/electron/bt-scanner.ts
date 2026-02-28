@@ -2,155 +2,108 @@ import { type ChildProcessByStdio, spawn } from "node:child_process";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { app } from "electron";
-import type { BluetoothDevice } from "../shared/ipc-types";
+import type { BluetoothDevice } from "shared/ipc-types";
 
-interface ScannerEvent {
-	event: "add" | "remove" | "update";
+interface IpcEvent {
+	event: "updated" | "removed";
 	name: string;
 	address: string;
 	rssi: number;
-	device_id: string;
+	deviceId: string;
+	networkSSID: string | null;
 }
 
-interface BluetoothScannerManagerOptions {
-	onDeviceAdded?: (device: BluetoothDevice) => void;
-	onDeviceRemoved?: (device: BluetoothDevice) => void;
+export interface ScannerManager {
+	start: () => void;
+	stop: () => void;
+	cleanup: () => void;
+	getDevices: () => BluetoothDevice[];
+}
+
+export interface ScannerManagerOptions {
 	onDeviceUpdated?: (device: BluetoothDevice) => void;
-	onScanningChanged?: (active: boolean) => void;
-	onError?: (error: string) => void;
+	onDeviceRemoved?: (device: BluetoothDevice) => void;
 }
 
-export function createBluetoothScannerManager(
-	options: BluetoothScannerManagerOptions = {},
-) {
+export function createScannerManager(
+	options: ScannerManagerOptions = {},
+): ScannerManager {
 	let scannerProcess: ChildProcessByStdio<null, Readable, Readable> | null =
 		null;
 	let stdoutBuffer = "";
 	const devices = new Map<string, BluetoothDevice>();
 
-	const emitScanning = (active: boolean) => {
-		options.onScanningChanged?.(active);
-	};
-
-	const toDevice = (event: ScannerEvent): BluetoothDevice | null => {
-		if (!event.address) {
-			return null;
-		}
-
-		return {
-			name: event.name,
-			address: event.address,
-			rssi: event.rssi,
-			lastSeen: Date.now(),
-			deviceId: event.device_id,
-		};
-	};
-
-	const parseLine = (line: string) => {
-		if (!line.trim()) {
-			return;
-		}
-
-		let event: ScannerEvent;
-		try {
-			event = JSON.parse(line) as ScannerEvent;
-		} catch {
-			options.onError?.(`Invalid scanner payload: ${line}`);
-			return;
-		}
-
-		const device = toDevice(event);
-		if (!device) {
-			return;
-		}
-
-		if (event.event === "add" || event.event === "update") {
-			const existing = devices.get(device.address);
-			devices.set(device.address, device);
-			if (existing) {
-				options.onDeviceUpdated?.(device);
-			} else {
-				options.onDeviceAdded?.(device);
-			}
-		}
-
-		if (event.event === "remove") {
-			const existing = devices.get(device.address);
-			if (existing) {
-				devices.delete(device.address);
-				options.onDeviceRemoved?.(existing);
-			}
-		}
-	};
-
-	const handleStdoutChunk = (chunk: Buffer) => {
-		stdoutBuffer += chunk.toString("utf8");
-		const lines = stdoutBuffer.split(/\r?\n/);
-		stdoutBuffer = lines.pop() ?? "";
+	function handleBuffer() {
+		const lines = stdoutBuffer.split("\n");
+		stdoutBuffer = lines.pop() || "";
 		for (const line of lines) {
-			console.log(`[bt-scanner] ${line}`);
-			parseLine(line);
-		}
-	};
-
-	const handleScannerExit = () => {
-		scannerProcess = null;
-		stdoutBuffer = "";
-
-		if (devices.size > 0) {
-			for (const device of devices.values()) {
-				options.onDeviceRemoved?.(device);
+			if (!line.trim()) {
+				continue;
 			}
-			devices.clear();
+
+			console.log("[bt-scanner]", line);
+
+			const event: IpcEvent = JSON.parse(line);
+			const device = {
+				name: event.name,
+				address: event.address,
+				rssi: event.rssi,
+				deviceId: event.deviceId,
+				networkSSID: event.networkSSID,
+			};
+			switch (event.event) {
+				case "updated": {
+					devices.set(event.address, device);
+					options.onDeviceUpdated?.(device);
+					break;
+				}
+				case "removed": {
+					devices.delete(event.address);
+					options.onDeviceRemoved?.(device);
+					break;
+				}
+			}
+		}
+	}
+
+	function start() {
+		if (scannerProcess) {
+			return;
 		}
 
-		emitScanning(false);
-	};
+		const cwd = path.join(app.getAppPath(), "bt-scanner");
+		scannerProcess = spawn("uv", ["run", "scanner.py"], {
+			cwd,
+			stdio: ["ignore", "pipe", "pipe"],
+			shell: process.platform === "win32",
+		});
 
-	const scannerCwd = path.join(app.getAppPath(), "bt-scanner");
-	const scannerScript = path.join(scannerCwd, "scan.py");
+		scannerProcess.stdout.on("data", (chunk: Buffer) => {
+			stdoutBuffer += chunk.toString("utf8");
+			handleBuffer();
+		});
+	}
+
+	function stop() {
+		cleanup();
+	}
+
+	function cleanup() {
+		if (scannerProcess) {
+			scannerProcess.kill();
+			scannerProcess = null;
+		}
+		devices.clear();
+	}
+
+	function getDevices() {
+		return [...devices.values()];
+	}
 
 	return {
-		start: () => {
-			if (scannerProcess) {
-				return;
-			}
-
-			scannerProcess = spawn("uv", ["run", scannerScript], {
-				cwd: scannerCwd,
-				stdio: ["ignore", "pipe", "pipe"],
-				shell: process.platform === "win32",
-			});
-
-			scannerProcess.stdout.on("data", handleStdoutChunk);
-			scannerProcess.stderr.on("data", (chunk: Buffer) => {
-				options.onError?.(chunk.toString("utf8").trim());
-			});
-			scannerProcess.on("error", (error) => {
-				options.onError?.(error.message);
-			});
-			scannerProcess.on("close", () => {
-				handleScannerExit();
-			});
-
-			emitScanning(true);
-		},
-		stop: () => {
-			if (!scannerProcess) {
-				return;
-			}
-			scannerProcess.kill();
-		},
-		dispose: () => {
-			if (scannerProcess) {
-				scannerProcess.kill();
-				scannerProcess = null;
-			}
-			devices.clear();
-			stdoutBuffer = "";
-			emitScanning(false);
-		},
-		getDevices: () => Array.from(devices.values()),
-		isScanning: () => scannerProcess !== null,
+		start,
+		stop,
+		cleanup,
+		getDevices,
 	};
 }

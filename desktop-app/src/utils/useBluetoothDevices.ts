@@ -7,21 +7,23 @@ export function useBluetoothDevices() {
 	useEffect(() => {
 		const bluetoothAPI = requireBluetoothAPI();
 
-		let unsubscribeAdded: (() => void) | null = null;
 		let unsubscribeUpdated: (() => void) | null = null;
 		let unsubscribeRemoved: (() => void) | null = null;
 
-		unsubscribeAdded = bluetoothAPI.onBluetoothDeviceAdded((device) => {
-			setDevices((prev) => [...prev, device]);
-		});
-
 		unsubscribeUpdated = bluetoothAPI.onBluetoothDeviceUpdated(
 			(updatedDevice) => {
-				setDevices((prev) =>
-					prev.map((device) =>
-						device.address === updatedDevice.address ? updatedDevice : device,
-					),
-				);
+				setDevices((prev) => {
+					const exists = prev.some(
+						(device) => device.address === updatedDevice.address,
+					);
+					return exists
+						? prev.map((device) =>
+								device.address === updatedDevice.address
+									? updatedDevice
+									: device,
+							)
+						: [...prev, updatedDevice];
+				});
 			},
 		);
 
@@ -36,7 +38,6 @@ export function useBluetoothDevices() {
 		bluetoothAPI.getBluetoothDevices().then(setDevices);
 
 		return () => {
-			unsubscribeAdded?.();
 			unsubscribeUpdated?.();
 			unsubscribeRemoved?.();
 		};
