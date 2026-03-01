@@ -1,14 +1,11 @@
 import { useEffect } from "react";
 import type { Socket } from "socket.io-client";
-import { sendDiffDriveWASD, type WasdState } from "@/utils/useSocket";
 import { useWASD } from "./useWASD";
 
-export function useWASDController(
-	options: {
-		enabled: boolean;
-		socket: Socket | null;
-	},
-) {
+export function useWASDController(options: {
+	enabled: boolean;
+	socket: Socket | null;
+}) {
 	const keys = useWASD();
 	const { enabled, socket } = options;
 
@@ -16,7 +13,7 @@ export function useWASDController(
 		if (!enabled || !socket) {
 			return;
 		}
-
+		/*
 		const state: WasdState = {
 			w: keys.w,
 			a: keys.a,
@@ -27,9 +24,10 @@ export function useWASDController(
 		const intervalId = setInterval(() => {
 			sendDiffDriveWASD(state, socket);
 		}, 500);
-
+		
 		return () => {
 			clearInterval(intervalId);
 		};
+		*/
 	}, [enabled, keys, socket]);
 }

@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { DPad } from "@/components/DPad";
-import { useConnectedDevice } from "@/utils/connected-device";
+import { useConnectedDevice } from "@/utils/useConnectedDevice";
+import { useMorphDevices } from "@/utils/useMorphDevices";
+import { useSocket } from "@/utils/useSocket";
 
 export const Route = createFileRoute("/control-panel")({
 	component: RouteComponent,
@@ -14,20 +16,31 @@ interface LogLine {
 
 function RouteComponent() {
 	const navigate = useNavigate();
-	const {
-		socket,
-		isSocketConnected,
-		devices,
-		selectedDeviceId,
-		selectedDevice,
-		setSelectedDeviceId,
-		connectToDevice,
-		connectedDevice,
-		isConnecting,
-		error,
-	} = useConnectedDevice();
+	const robotSelectId = useId();
+	const { socket } = useSocket();
+	const { devices } = useMorphDevices();
+	const { connectedDevice, connect } = useConnectedDevice();
+	const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+	const [isConnecting, setIsConnecting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const [disconnected, setDisconnected] = useState(false);
 	const [logs, setLogs] = useState<LogLine[]>([]);
+
+	const isSocketConnected = socket?.connected ?? false;
+	const selectedDevice = devices.find((d) => d.deviceId === selectedDeviceId) ?? null;
+
+	const connectToDevice = async () => {
+		if (!selectedDevice) return;
+		setIsConnecting(true);
+		setError(null);
+		try {
+			connect(selectedDevice);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Connection failed");
+		} finally {
+			setIsConnecting(false);
+		}
+	};
 
 	useEffect(() => {
 		if (!socket) {
@@ -42,7 +55,10 @@ function RouteComponent() {
 			if (!payload?.message) {
 				return;
 			}
-			setLogs((prev) => [...prev, { id: Date.now(), message: payload.message }]);
+			setLogs((prev) => [
+				...prev,
+				{ id: Date.now(), message: payload.message || '' },
+			]);
 		};
 
 		socket.on("disconnect", handleDisconnect);
@@ -71,7 +87,9 @@ function RouteComponent() {
 			<section className="mx-auto flex w-full max-w-7xl flex-1 flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[0_18px_40px_rgba(2,8,18,0.35)] backdrop-blur-md">
 				<div className="mb-6 flex flex-wrap items-center justify-between gap-4">
 					<div>
-						<h1 className="text-2xl font-semibold tracking-tight">Control Panel</h1>
+						<h1 className="text-2xl font-semibold tracking-tight">
+							Control Panel
+						</h1>
 						<p className="mt-1 text-sm text-[var(--ink-1)]">
 							Drive and monitor your robot in real time
 						</p>
@@ -95,13 +113,13 @@ function RouteComponent() {
 					<div className="flex flex-wrap items-end gap-3">
 						<div className="min-w-56 flex-1">
 							<label
-								htmlFor="robot-select"
+								htmlFor={robotSelectId}
 								className="mb-2 block text-xs font-medium uppercase tracking-wide text-[var(--ink-1)]"
 							>
 								Target Robot
 							</label>
 							<select
-								id="robot-select"
+								id={robotSelectId}
 								value={selectedDeviceId}
 								onChange={(event) => {
 									setSelectedDeviceId(event.target.value);
@@ -135,7 +153,9 @@ function RouteComponent() {
 							Connected robot: {connectedDevice.host}:{connectedDevice.port}
 						</p>
 					) : null}
-					{error ? <p className="mt-2 text-xs text-[#ffb7a4]">{error}</p> : null}
+					{error ? (
+						<p className="mt-2 text-xs text-[#ffb7a4]">{error}</p>
+					) : null}
 				</div>
 
 				<div className="grid flex-1 gap-4 lg:grid-cols-2">
@@ -147,9 +167,9 @@ function RouteComponent() {
 							</span>
 						</div>
 						{logs.length === 0 ? (
-							<p className="text-sm text-[var(--ink-1)]">No logs yet.</p>
+								<p className="text-sm text-[var(--ink-1)]">No logs yet.</p>
 						) : (
-							<ul className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+								<ul className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
 								{logs.map((line) => (
 									<li
 										key={line.id}

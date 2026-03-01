@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
 	BluetoothDevice,
+	HostCapabilities,
 	OpenSettingsResult,
 	Unsubscribe,
 } from "../shared/ipc-types";
@@ -31,6 +32,14 @@ contextBridge.exposeInMainWorld("bluetoothAPI", {
 		return () =>
 			ipcRenderer.removeListener("bluetooth:device-updated", listener);
 	},
+	sendWifiCredentials: (deviceId: string, ssid: string, password: string) => {
+		console.log("Sending WiFi credentials", { deviceId, ssid, password });
+		return ipcRenderer.invoke("bluetooth:send-wifi-credentials", {
+			deviceId,
+			ssid,
+			password,
+		});
+	},
 });
 
 contextBridge.exposeInMainWorld("wifiAPI", {
@@ -44,4 +53,12 @@ contextBridge.exposeInMainWorld("serverAPI", {
 		return () => ipcRenderer.removeListener("server:port-changed", listener);
 	},
 	getPort: () => ipcRenderer.invoke("server:get-port"),
+});
+
+contextBridge.exposeInMainWorld("platformAPI", {
+	getPlatformCapabilities: (): HostCapabilities => {
+		return {
+			supportsBluetoothTethering: process.platform !== "darwin",
+		};
+	},
 });

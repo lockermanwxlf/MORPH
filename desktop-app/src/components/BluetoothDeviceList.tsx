@@ -10,15 +10,14 @@ export function BluetoothDeviceList() {
 		const bluetoothAPI = requireBluetoothAPI();
 		bluetoothAPI.getBluetoothDevices().then(setDevices);
 		const unsubscribes = [
-			bluetoothAPI.onBluetoothDeviceAdded((device) => {
-				setDevices((prev) => [...prev, device]);
-			}),
-			bluetoothAPI.onBluetoothDeviceUpdated((updatedDevice) => {
-				setDevices((prev) =>
-					prev.map((device) =>
-						device.address === updatedDevice.address ? updatedDevice : device,
-					),
-				);
+			bluetoothAPI.onBluetoothDeviceUpdated((device: BluetoothDevice) => {
+				setDevices((prev) => {
+					const exists = prev.some((d) => d.address === device.address);
+					if (exists) {
+						return prev.map((d) => d.address === device.address ? device : d);
+					}
+					return [...prev, device];
+				});
 			}),
 			bluetoothAPI.onBluetoothDeviceRemoved((removedDevice) => {
 				setDevices((prev) =>

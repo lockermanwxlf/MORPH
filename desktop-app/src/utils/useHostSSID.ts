@@ -7,7 +7,7 @@ export function useHostSSID() {
 		if (window.wifiAPI) {
 			window.wifiAPI.getHostSSID().then(setSSID);
 		}
-	});
+	}, []);
 
 	return ssid;
 }

@@ -1,5 +1,6 @@
 import type {
 	BluetoothDevice,
+	HostCapabilities,
 	OpenSettingsResult,
 	Unsubscribe,
 } from "../../shared/ipc-types";
@@ -16,6 +17,11 @@ export interface BluetoothAPI {
 	onBluetoothDeviceUpdated: (
 		callback: (device: BluetoothDevice) => void,
 	) => Unsubscribe;
+	sendWifiCredentials: (
+		deviceId: string,
+		ssid: string,
+		password: string,
+	) => Promise<void>;
 }
 
 export interface WifiAPI {
@@ -27,10 +33,15 @@ export interface ServerAPI {
 	getPort: () => Promise<number>;
 }
 
+export interface PlatformAPI {
+	getPlatformCapabilities: () => HostCapabilities;
+}
+
 declare global {
 	interface Window {
 		bluetoothAPI?: BluetoothAPI;
 		wifiAPI?: WifiAPI;
 		serverAPI?: ServerAPI;
+		platformAPI?: PlatformAPI;
 	}
 }

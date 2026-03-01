@@ -1,7 +1,5 @@
-import { execFile } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { app, BrowserWindow, ipcMain } from "electron";
 
 import { createBackendManager } from "./backend";
@@ -10,6 +8,7 @@ import {
 	openHotspotSettings,
 } from "./bluetooth-tethering";
 import { createScannerManager } from "./bt-scanner";
+import { sendWifiInfo } from "./ipc/send-wifi-info";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +88,17 @@ app.whenReady().then(async () => {
 	ipcMain.handle("bluetooth:open-settings", () => openBluetoothSettings());
 	ipcMain.handle("server:get-port", () => backendManager.getPort());
 
+	ipcMain.handle(
+		"bluetooth:send-wifi-credentials",
+		(_event, { deviceId, ssid, password }) => {
+			console.log("[main] bluetooth:send-wifi-credentials", {
+				deviceId,
+				ssid,
+				passwordLength: typeof password === "string" ? password.length : -1,
+			});
+			sendWifiInfo(deviceId, ssid, password);
+		},
+	);
 	scannerManager.start();
 });
 

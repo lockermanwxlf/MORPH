@@ -7,7 +7,7 @@ export const Route = createFileRoute("/lesson")({
 });
 
 function RouteComponent() {
-	const { socket, isConnected } = useSocket();
+	const { socket } = useSocket();
 
 	return (
 		<div className="flex w-full flex-1 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
@@ -28,7 +28,7 @@ function RouteComponent() {
 							The D-pad controls forward, backward, and turning. Press a button
 							or keyboard key to send a movement command.
 						</p>
-						<DPad socket={socket} enabled={isConnected} />
+						<DPad socket={socket} enabled={true} />
 					</section>
 
 					<section className="space-y-3">

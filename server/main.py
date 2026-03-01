@@ -133,6 +133,15 @@ async def handle_connect(sid: str, data: dict):
     return {"status": "ok", "message": "connected to robot"}
 
 
+@sio.on("disconnect_robot")  # type: ignore
+async def handle_disconnect_robot(sid: str):
+    if sid in sid_to_client:
+        client = sid_to_client[sid]
+        client.set_listener_sid(None)
+        del sid_to_client[sid]
+    return {"status": "ok", "message": "disconnected from robot"}
+
+
 @sio.on("diff_drive")  # type: ignore
 async def diff_drive(sid: str, data: dict):
     if sid not in sid_to_client:

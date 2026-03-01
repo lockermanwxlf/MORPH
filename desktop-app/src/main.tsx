@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 
 import { getRouter } from "./router";
 import { requireBluetoothAPI } from "./utils/preload-apis";
+import type { BluetoothDevice } from "shared/ipc-types";
 
 try {
 	const bluetoothAPI = requireBluetoothAPI();
@@ -19,20 +20,12 @@ try {
 
 	bluetoothAPI.startBluetoothScan();
 
-	bluetoothAPI.onBluetoothDeviceAdded((device) => {
-		console.log("[Renderer] Bluetooth device added:", device);
-	});
-
-	bluetoothAPI.onBluetoothDeviceUpdated((device) => {
+	bluetoothAPI.onBluetoothDeviceUpdated((device: BluetoothDevice) => {
 		console.log("[Renderer] Bluetooth device updated:", device);
 	});
 
-	bluetoothAPI.onBluetoothDeviceRemoved((device) => {
+	bluetoothAPI.onBluetoothDeviceRemoved((device: BluetoothDevice) => {
 		console.log("[Renderer] Bluetooth device removed:", device);
-	});
-
-	bluetoothAPI.onBluetoothScanning((active) => {
-		console.log("[Renderer] Bluetooth scanning:", active);
 	});
 } catch (error) {
 	console.warn("[Renderer] bluetoothAPI not available:", error);

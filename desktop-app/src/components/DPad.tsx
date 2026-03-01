@@ -1,5 +1,4 @@
 import type { Socket } from "socket.io-client";
-import { sendDiffDrive } from "@/utils/useSocket";
 import { useWASDController } from "./useWASDController";
 
 interface DPadProps {
@@ -13,20 +12,20 @@ export function DPad({ socket, enabled = true }: DPadProps) {
 	const isDisabled = !enabled || !socket;
 
 	return (
-		<section className="rounded-xl border border-[var(--line)] bg-black/20 p-6">
+		<section className="rounded-xl border border-(--line) bg-black/20 p-6">
 			<div className="mb-4 flex items-end justify-between">
 				<div>
 					<h2 className="text-xl font-semibold tracking-tight">Drive Pad</h2>
-					<p className="mt-1 text-xs text-[var(--ink-1)]">
+					<p className="mt-1 text-xs text-(--ink-1)">
 						Use buttons or keyboard controls (W/A/S/D)
 					</p>
 				</div>
-				<span className="rounded-full border border-[var(--line)] bg-white/5 px-2 py-1 text-[11px] font-medium text-[var(--ink-1)]">
+				<span className="rounded-full border border-(--line) bg-white/5 px-2 py-1 text-[11px] font-medium text-(--ink-1)">
 					{isDisabled ? "Idle" : "Live"}
 				</span>
 			</div>
 
-			<div className="mx-auto grid aspect-square w-full max-w-[17rem] grid-cols-3 grid-rows-3 place-items-center gap-2">
+			<div className="mx-auto grid aspect-square w-full max-w-68 grid-cols-3 grid-rows-3 place-items-center gap-2">
 				<div />
 				<DPadButton
 					label="↑"
@@ -45,14 +44,13 @@ export function DPad({ socket, enabled = true }: DPadProps) {
 				/>
 				<button
 					type="button"
-					className="h-16 w-16 rounded-full border border-[var(--line)] bg-white/8 text-lg font-semibold text-[var(--ink-0)] transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+					className="h-16 w-16 rounded-full border border-(--line) bg-white/8 text-lg font-semibold text-(--ink-0) transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
 					aria-label="Stop"
 					disabled={isDisabled}
 					onClick={() => {
 						if (!socket) {
 							return;
 						}
-						sendDiffDrive("stop", socket);
 					}}
 				>
 					Stop
@@ -81,7 +79,7 @@ export function DPad({ socket, enabled = true }: DPadProps) {
 function DPadButton({
 	label,
 	ariaLabel,
-	direction,
+	direction: _direction,
 	socket,
 	disabled,
 }: {
@@ -96,12 +94,11 @@ function DPadButton({
 			type="button"
 			aria-label={ariaLabel}
 			disabled={disabled}
-			className="h-16 w-16 rounded-xl border border-[var(--line)] bg-white/8 text-2xl text-[var(--ink-0)] font-semibold shadow-[0_8px_20px_rgba(2,8,18,0.2)] transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+			className="h-16 w-16 rounded-xl border border-(--line) bg-white/8 text-2xl text-(--ink-0) font-semibold shadow-[0_8px_20px_rgba(2,8,18,0.2)] transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
 			onClick={() => {
 				if (!socket) {
 					return;
 				}
-				sendDiffDrive(direction, socket);
 			}}
 		>
 			{label}

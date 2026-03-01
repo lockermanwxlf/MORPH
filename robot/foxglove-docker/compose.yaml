@@ -1,0 +1,5 @@
+services:
+  robot:
+    build: .
+    ports:
+      - "8765:8765"
