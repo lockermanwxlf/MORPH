@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { DPad } from "@/components/DPad";
 import { useConnectedDevice } from "@/utils/ConnectedDeviceContext";
 import { useSocket } from "@/utils/SocketContext";
@@ -25,6 +25,7 @@ function RouteComponent() {
 	const [error, setError] = useState<string | null>(null);
 	const [disconnected, setDisconnected] = useState(false);
 	const [logs, setLogs] = useState<LogLine[]>([]);
+	const logIdRef = useRef(0);
 
 	const isSocketConnected = socket?.connected ?? false;
 	const selectedDevice =
@@ -57,8 +58,8 @@ function RouteComponent() {
 				return;
 			}
 			setLogs((prev) => [
-				...prev,
-				{ id: Date.now(), message: payload.message || "" },
+				{ id: ++logIdRef.current, message: payload.message || "" },
+				...prev.slice(0, 99),
 			]);
 		};
 
@@ -170,7 +171,7 @@ function RouteComponent() {
 						{logs.length === 0 ? (
 							<p className="text-sm text-(--ink-1)">No logs yet.</p>
 						) : (
-							<ul className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+							<ul className="max-h-104 space-y-2 overflow-y-auto pr-1">
 								{logs.map((line) => (
 									<li
 										key={line.id}

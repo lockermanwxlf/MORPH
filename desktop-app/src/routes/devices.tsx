@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Info } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import type { BluetoothDevice } from "shared/ipc-types";
+import { useConnectedDevice } from "@/utils/ConnectedDeviceContext";
 import { requireBluetoothAPI } from "@/utils/preload-apis";
 import { useBluetoothDevices } from "@/utils/useBluetoothDevices";
 import { type MorphDevice, useMorphDevices } from "@/utils/useMorphDevices";
@@ -82,6 +83,8 @@ function BluetoothDeviceComponent({
 }
 
 function WifiDeviceComponent({ device }: { device: MorphDevice }) {
+	const { connect } = useConnectedDevice();
+
 	return (
 		<div className="flex flex-col group rounded-xl border border-(--line) bg-black/20 p-4 transition-colors hover:bg-black/30">
 			<div className="flex flex-col">
@@ -93,7 +96,9 @@ function WifiDeviceComponent({ device }: { device: MorphDevice }) {
 				<button
 					type="button"
 					className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
-					onClick={() => {}}
+					onClick={() => {
+						connect(device);
+					}}
 				>
 					Connect to Device
 				</button>

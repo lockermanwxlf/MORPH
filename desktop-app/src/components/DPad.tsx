@@ -7,7 +7,7 @@ interface DPadProps {
 }
 
 export function DPad({ socket, enabled = true }: DPadProps) {
-	useWASDController({ enabled, socket });
+	useWASDController({ enabled });
 
 	const isDisabled = !enabled || !socket;
 
