@@ -56,8 +56,15 @@ function createWindow() {
 		},
 	});
 
+	mainWindow.webContents.on("did-fail-load", (_e, code, desc) => {
+		console.error("did-fail-load", code, desc);
+	});
+
+	console.log("VITE_DEV_SERVER_URL:", VITE_DEV_SERVER_URL);
 	if (VITE_DEV_SERVER_URL) {
-		mainWindow.loadURL(VITE_DEV_SERVER_URL);
+		mainWindow.loadURL(VITE_DEV_SERVER_URL).catch((err) => {
+			console.error("loadURL failed:", err);
+		});
 		mainWindow.webContents.openDevTools();
 	} else {
 		mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));

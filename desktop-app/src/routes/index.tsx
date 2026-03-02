@@ -9,19 +9,19 @@ function App() {
 				<div className="flex flex-1 flex-col gap-3">
 					<Link
 						to="/devices"
-						className="bg-[--surface] shadow-[0_18px_40px_rgba(2,8,18,0.70)] backdrop-blur-mdborder border border-white/8 flex flex-1 items-center justify-center rounded-xl text-3xl font-semibold tracking-tight text-[--ink-0] transition-colors hover:bg-[rgba(36,199,184,0.14)]"
+						className="bg-(--surface) shadow-[0_18px_40px_rgba(2,8,18,0.70)] backdrop-blur-mdborder border border-white/8 flex flex-1 items-center justify-center rounded-xl text-3xl font-semibold tracking-tight text-(--ink-0) transition-colors hover:bg-[rgba(36,199,184,0.14)]"
 					>
 						Devices
 					</Link>
 					<Link
 						to="/lesson"
-						className="bg-[--surface] shadow-[0_18px_40px_rgba(2,8,18,0.70)] backdrop-blur-mdborder border border-white/8 flex flex-1 items-center justify-center rounded-xl text-3xl font-semibold tracking-tight text-[--ink-0] transition-colors hover:bg-[rgba(36,199,184,0.14)]"
+						className="bg-(--surface) shadow-[0_18px_40px_rgba(2,8,18,0.70)] backdrop-blur-mdborder border border-white/8 flex flex-1 items-center justify-center rounded-xl text-3xl font-semibold tracking-tight text-(--ink-0) transition-colors hover:bg-[rgba(36,199,184,0.14)]"
 					>
 						Lessons
 					</Link>
 					<Link
 						to="/control-panel"
-						className="bg-[--surface] shadow-[0_18px_40px_rgba(2,8,18,0.70)] backdrop-blur-mdborder border border-white/8 flex flex-1 items-center justify-center rounded-xl text-3xl font-semibold tracking-tight text-[--ink-0] transition-colors hover:bg-[rgba(36,199,184,0.22)]"
+						className="bg-(--surface) shadow-[0_18px_40px_rgba(2,8,18,0.70)] backdrop-blur-mdborder border border-white/8 flex flex-1 items-center justify-center rounded-xl text-3xl font-semibold tracking-tight text-(--ink-0) transition-colors hover:bg-[rgba(36,199,184,0.22)]"
 					>
 						Control Panel
 					</Link>

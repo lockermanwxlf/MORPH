@@ -4,7 +4,7 @@ import { requireServerAPI } from "./preload-apis";
 
 export function useSocket() {
 	const serverAPI = requireServerAPI();
-	const [socket, setSocket] = useState<Socket>(io());
+	const [socket, setSocket] = useState<Socket | null>(null);
 
 	useEffect(() => {
 		async function initializeSocket() {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type MorphDevice, useMorphDevices } from "./useMorphDevices";
 import { useSocket } from "./useSocket";
 
@@ -8,55 +8,82 @@ interface ConnectResponse {
 }
 
 export function useConnectedDevice() {
-	const { devices: morphDevices } = useMorphDevices();
 	const { socket } = useSocket();
-
-	const [desiredDeviceId, setDesiredDeviceId] = useState<string | null>(null);
+	const { devices: morphDevices } = useMorphDevices();
+	const desiredDeviceId = useRef<string | null>(null);
 	const [connectedDevice, setConnectedDevice] = useState<MorphDevice | null>(
 		null,
 	);
 
-	const disconnect = useCallback(() => {
-		if (!socket) return;
-		socket.emit("disconnect_robot");
-	}, [socket]);
-
-	useEffect(() => {
-		if (!socket) {
-			setConnectedDevice(null);
-			return;
-		}
-		if (
-			!desiredDeviceId ||
-			!morphDevices.find((d) => d.deviceId === desiredDeviceId)
-		) {
-			disconnect();
-			setConnectedDevice(null);
-			return;
-		}
-
-		socket.emit(
-			"connect_robot",
-			{ deviceId: desiredDeviceId },
-			(response: ConnectResponse) => {
-				if (response.status === "ok") {
-					setConnectedDevice(
-						morphDevices.find((d) => d.deviceId === desiredDeviceId) || null,
-					);
-				} else {
-					setConnectedDevice(null);
+	const connect = useCallback(
+		(deviceId: string) =>
+			new Promise((resolve, reject) => {
+				if (!socket) {
+					reject(new Error("Socket not initialized"));
+					return;
 				}
-			},
-		);
-	}, [desiredDeviceId, socket, morphDevices, disconnect]);
+				const target = morphDevices.find((d) => d.deviceId === deviceId);
+				if (!target) {
+					reject(new Error("Device not found"));
+					return;
+				}
+				socket.emit(
+					"connect_robot",
+					{ device_id: deviceId },
+					(response: ConnectResponse) => {
+						if (response.status === "ok") {
+							setConnectedDevice(target);
+							resolve(response.message);
+						} else {
+							reject(new Error(response.message));
+						}
+					},
+				);
+			}),
+		[morphDevices, socket],
+	);
 
-	function connect(device: MorphDevice) {
-		setDesiredDeviceId(device.deviceId);
-	}
+	const disconnect = useCallback(
+		() =>
+			new Promise((resolve, reject) => {
+				if (!socket) {
+					reject(new Error("Socket not initialized"));
+					return;
+				}
+				desiredDeviceId.current = null;
+				socket.emit("disconnect_robot", (response: ConnectResponse) => {
+					if (response.status === "ok") {
+						setConnectedDevice(null);
+						resolve(response.message);
+					} else {
+						reject(new Error(response.message));
+					}
+				});
+			}),
+		[socket],
+	);
 
-	return {
-		connectedDevice,
-		connect,
-		disconnect,
-	};
+	// Attempt reconnect if socket changes.
+	useEffect(() => {
+		if (!socket || !desiredDeviceId.current) {
+			return;
+		}
+		connect(desiredDeviceId.current).catch((err: Error) => {
+			console.log("Failed to connect to device on socket change:", err);
+		});
+	}, [socket, connect]);
+
+	// Disconnect if the robot no longer appears in the device list.
+	useEffect(() => {
+		if (!morphDevices.find((d) => d.deviceId === desiredDeviceId.current)) {
+			disconnect().catch((err: Error) => {
+				console.log(
+					"Failed to disconnect from device on morphDevices change:",
+					err,
+				);
+			});
+		}
+	}, [morphDevices, disconnect]);
+
+	return { connectedDevice, connect, disconnect };
 }

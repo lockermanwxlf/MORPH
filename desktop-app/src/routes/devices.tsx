@@ -36,7 +36,7 @@ function BluetoothDeviceComponent({
 	}
 
 	return (
-		<div className="flex flex-col group rounded-xl border border-[--line] bg-black/20 p-4 transition-colors hover:bg-black/30">
+		<div className="flex flex-col group rounded-xl border border-(--line) bg-black/20 p-4 transition-colors hover:bg-black/30">
 			<div className="flex flex-col">
 				<p className="truncate text-base font-semibold">{device.name}</p>
 				<p>SSID: {ssidToLabel(device.networkSSID)}</p>
@@ -45,7 +45,7 @@ function BluetoothDeviceComponent({
 			<div className="group-hover:mt-4 opacity-0 overflow-hidden max-h-0 group-hover:max-h-none transition-all duration-200 group-hover:opacity-100">
 				<button
 					type="button"
-					className="w-full rounded-lg border border-[--line] bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-[--ink-0]"
+					className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
 					onClick={() => {
 						openWifiDialogue();
 					}}
@@ -56,7 +56,7 @@ function BluetoothDeviceComponent({
 			<div className="group-hover:mt-4 opacity-0 overflow-hidden max-h-0 group-hover:max-h-none transition-all duration-200 group-hover:opacity-100">
 				<button
 					type="button"
-					className="w-full rounded-lg border border-[--line] bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-[--ink-0]"
+					className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
 					onClick={() => {
 						openHotspotSettings();
 					}}
@@ -68,7 +68,7 @@ function BluetoothDeviceComponent({
 				<div className="group-hover:mt-4 opacity-0 overflow-hidden max-h-0 group-hover:max-h-none transition-all duration-200 group-hover:opacity-100">
 					<button
 						type="button"
-						className="w-full rounded-lg border border-[--line] bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-[--ink-0]"
+						className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
 						onClick={() => {
 							openBluetoothSettings();
 						}}
@@ -83,7 +83,7 @@ function BluetoothDeviceComponent({
 
 function WifiDeviceComponent({ device }: { device: MorphDevice }) {
 	return (
-		<div className="flex flex-col group rounded-xl border border-[--line] bg-black/20 p-4 transition-colors hover:bg-black/30">
+		<div className="flex flex-col group rounded-xl border border-(--line) bg-black/20 p-4 transition-colors hover:bg-black/30">
 			<div className="flex flex-col">
 				<p className="truncate text-base font-semibold">{device.deviceId}</p>
 				<p>ID: {device.deviceId}</p>
@@ -92,7 +92,7 @@ function WifiDeviceComponent({ device }: { device: MorphDevice }) {
 			<div className="group-hover:mt-4 opacity-0 overflow-hidden max-h-0 group-hover:max-h-none transition-all duration-200 group-hover:opacity-100">
 				<button
 					type="button"
-					className="w-full rounded-lg border border-[--line] bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-[--ink-0]"
+					className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
 					onClick={() => {}}
 				>
 					Connect to Device
@@ -198,13 +198,13 @@ function ChangeWifiDialogueComponent({
 				<button
 					type="submit"
 					disabled={isSubmitting || !ssid.trim()}
-					className="w-full rounded-lg bg-green-500/80 mt-4 py-1 font-medium transition-colors hover:bg-green-500 border border-[--line] disabled:opacity-50 disabled:cursor-not-allowed"
+					className="w-full rounded-lg bg-green-500/80 mt-4 py-1 font-medium transition-colors hover:bg-green-500 border border-(--line) disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					{isSubmitting ? "Connecting..." : "Connect"}
 				</button>
 				<button
 					type="button"
-					className="mt-2 rounded-lg border border-[--line] bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-[--ink-0]"
+					className="mt-2 rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
 					onClick={onClose}
 				>
 					Close

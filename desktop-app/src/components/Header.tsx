@@ -13,11 +13,11 @@ export default function Header() {
 
 	return (
 		<>
-			<header className="relative z-20 mx-4 mt-4 flex items-center rounded-2xl border border-[--line] bg-[--surface] px-4 py-3 text-white shadow-[0_20px_50px_rgba(2,8,18,0.45)] backdrop-blur-md">
+			<header className="relative z-20 mx-4 mt-4 flex items-center rounded-2xl border border-(--line) bg-(--surface) px-4 py-3 text-white shadow-[0_20px_50px_rgba(2,8,18,0.45)] backdrop-blur-md">
 				<button
 					type="button"
 					onClick={() => setIsOpen(true)}
-					className="rounded-xl border border-[--line] bg-white/5 p-2 transition-colors hover:bg-white/10"
+					className="rounded-xl border border-(--line) bg-white/5 p-2 transition-colors hover:bg-white/10"
 					aria-label="Open menu"
 				>
 					<Menu size={24} />
@@ -32,19 +32,19 @@ export default function Header() {
 					</Link>
 				</h1>
 				<div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 group">
-					<div className="cursor-default rounded-xl border border-[--line] bg-white/5 px-4 py-2 text-sm font-medium text-[--ink-0]">
+					<div className="cursor-default rounded-xl border border-(--line) bg-white/5 px-4 py-2 text-sm font-medium text-(--ink-0)">
 						{deviceLabel}
 					</div>
-					<div className="pointer-events-none absolute left-1/2 top-full w-48 -translate-x-1/2 rounded-xl border border-[--line] bg-[--surface] p-1 opacity-0 shadow-xl backdrop-blur-md transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+					<div className="pointer-events-none absolute left-1/2 top-full w-48 -translate-x-1/2 rounded-xl border border-(--line) bg-(--surface) p-1 opacity-0 shadow-xl backdrop-blur-md transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
 						<Link
 							to="/devices"
-							className="block w-full rounded-lg px-3 py-2 text-left text-sm text-[--ink-0] transition-colors hover:bg-white/10"
+							className="block w-full rounded-lg px-3 py-2 text-left text-sm text-(--ink-0) transition-colors hover:bg-white/10"
 						>
 							Show device list
 						</Link>
 						<Link
 							to="/control-panel"
-							className="block w-full rounded-lg px-3 py-2 text-left text-sm text-[--ink-0] transition-colors hover:bg-white/10"
+							className="block w-full rounded-lg px-3 py-2 text-left text-sm text-(--ink-0) transition-colors hover:bg-white/10"
 						>
 							Open control panel
 						</Link>
@@ -52,7 +52,7 @@ export default function Header() {
 				</div>
 				<Link
 					to="/control-panel"
-					className="ml-auto inline-flex items-center gap-2 rounded-xl border border-[--line] bg-[rgba(36,199,184,0.14)] px-3 py-2 text-sm font-medium text-[--ink-0] transition-colors hover:bg-[rgba(36,199,184,0.24)]"
+					className="ml-auto inline-flex items-center gap-2 rounded-xl border border-(--line) bg-[rgba(36,199,184,0.14)] px-3 py-2 text-sm font-medium text-(--ink-0) transition-colors hover:bg-[rgba(36,199,184,0.24)]"
 				>
 					<Joystick size={16} />
 					<span>Control Panel</span>
@@ -60,11 +60,11 @@ export default function Header() {
 			</header>
 
 			<aside
-				className={`fixed left-0 top-0 z-50 flex h-full w-80 flex-col border-r border-[--line] bg-[rgba(6,12,22,0.96)] text-white shadow-2xl transition-transform duration-300 ease-in-out ${
+				className={`fixed left-0 top-0 z-50 flex h-full w-80 flex-col border-r border-(--line) bg-[rgba(6,12,22,0.96)] text-white shadow-2xl transition-transform duration-300 ease-in-out ${
 					isOpen ? "translate-x-0" : "-translate-x-full"
 				}`}
 			>
-				<div className="flex items-center justify-between border-b border-[--line] p-4">
+				<div className="flex items-center justify-between border-b border-(--line) p-4">
 					<h2 className="text-xl font-bold">Navigation</h2>
 					<button
 						type="button"
@@ -83,7 +83,7 @@ export default function Header() {
 						className="mb-2 flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-white/10"
 						activeProps={{
 							className:
-								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-[var(--brand-soft)] p-3 text-white transition-colors hover:bg-[var(--brand)]",
+								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-(--brand-soft) p-3 text-white transition-colors hover:bg-(--brand)",
 						}}
 					>
 						<Home size={20} />
@@ -96,7 +96,7 @@ export default function Header() {
 						className="mb-2 flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-white/10"
 						activeProps={{
 							className:
-								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-[var(--brand-soft)] p-3 text-white transition-colors hover:bg-[var(--brand)]",
+								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-(--brand-soft) p-3 text-white transition-colors hover:bg-(--brand)",
 						}}
 					>
 						<Gamepad2 size={20} />
@@ -109,7 +109,7 @@ export default function Header() {
 						className="mb-2 flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-white/10"
 						activeProps={{
 							className:
-								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-[var(--brand-soft)] p-3 text-white transition-colors hover:bg-[var(--brand)]",
+								"mb-2 flex items-center gap-3 rounded-lg border border-transparent bg-(--brand-soft) p-3 text-white transition-colors hover:bg-(--brand)",
 						}}
 					>
 						<BookOpen size={20} />
