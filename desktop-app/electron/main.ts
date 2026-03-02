@@ -81,8 +81,6 @@ app.whenReady().then(async () => {
 		return;
 	}
 
-	createWindow();
-
 	ipcMain.handle("bluetooth:get-devices", () => scannerManager.getDevices());
 	ipcMain.on("bluetooth:start-scan", () => scannerManager.start());
 	ipcMain.on("bluetooth:stop-scan", () => scannerManager.stop());
@@ -107,6 +105,8 @@ app.whenReady().then(async () => {
 		},
 	);
 	scannerManager.start();
+
+	createWindow();
 });
 
 app.on("before-quit", () => {

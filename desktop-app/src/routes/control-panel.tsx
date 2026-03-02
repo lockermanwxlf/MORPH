@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useId, useState } from "react";
 import { DPad } from "@/components/DPad";
-import { useConnectedDevice } from "@/utils/useConnectedDevice";
+import { useConnectedDevice } from "@/utils/ConnectedDeviceContext";
+import { useSocket } from "@/utils/SocketContext";
 import { useMorphDevices } from "@/utils/useMorphDevices";
-import { useSocket } from "@/utils/useSocket";
 
 export const Route = createFileRoute("/control-panel")({
 	component: RouteComponent,

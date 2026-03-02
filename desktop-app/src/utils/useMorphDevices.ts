@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { requireServerAPI } from "./preload-apis";
-import { useSocket } from "./useSocket";
+import { useSocket } from "./SocketContext";
 
 export interface MorphDevice {
 	host: string;

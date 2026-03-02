@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BookOpen, Gamepad2, Home, Joystick, Menu, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useConnectedDevice } from "@/utils/useConnectedDevice";
+import { useConnectedDevice } from "@/utils/ConnectedDeviceContext";
 
 export default function Header() {
 	const [isOpen, setIsOpen] = useState(false);

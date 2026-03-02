@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DPad } from "@/components/DPad";
-import { useSocket } from "@/utils/useSocket";
+import { useSocket } from "@/utils/SocketContext";
 
 export const Route = createFileRoute("/lesson")({
 	component: RouteComponent,
