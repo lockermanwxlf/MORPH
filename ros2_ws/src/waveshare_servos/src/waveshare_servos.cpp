@@ -244,7 +244,7 @@ hardware_interface::return_type WaveshareServos::read(
 		double unwrapped = raw_no_sign + rev_count_[i] * 2.0 * M_PI;
 
 		// apply sign (ID==2 inverted) and your configured offset
-		const double sign = (id == 2) ? -1.0 : 1.0;
+		const double sign = (id == 2 || id == 4) ? -1.0 : 1.0;
 		const double pos_meas = sign * unwrapped - pos_offsets_[i];
 
     	pos_states_[i] = pos_meas;
@@ -272,7 +272,7 @@ hardware_interface::return_type WaveshareServos::write(
 	{
 		// Determine sign based on the actual servo ID for this index
 		const int servo_id = pos_ids_[i];
-		const double sign = (servo_id == 2) ? -1.0 : 1.0;
+		const double sign = (servo_id == 2 || servo_id == 4) ? -1.0 : 1.0;
 
 		// Desired robot-frame absolute angle is (cmd + offset).
 		// Servo-frame target should flip sign for ID=2.
@@ -291,10 +291,25 @@ hardware_interface::return_type WaveshareServos::write(
 	for (size_t i = 0; i < vel_is_.size(); i++)
 	{
 		const int servo_id = vel_ids_[i];
-		const double sign = (servo_id == 2) ? -1.0 : 1.0;
+		const double sign = (servo_id == 2 || servo_id == 4) ? -1.0 : 1.0;
 
 		double robot_vel = vel_cmds_[vel_is_[i]];
 		double servo_vel = sign * robot_vel;
+
+
+		//
+		static rclcpp::Clock clock(RCL_STEADY_TIME);
+		auto logger = rclcpp::get_logger("waveshare_servos");
+
+		// Example indices (adjust to your joint ordering!)
+		//const int L = 0; // index of left_wheel_joint in all_ids_/vel_cmds_
+		//const int R = 1; // index of right_wheel_joint
+
+		//RCLCPP_INFO_THROTTLE(logger, clock, 1000,
+		//"vel_cmds: L=%f R=%f (NaN means controller isn't writing commands yet)",
+		//vel_cmds_[L], vel_cmds_[R]);
+		//
+
 
 		v_vel_ar_[i] = static_cast<s16>((servo_vel * steps_) / (2 * M_PI));
 	}
@@ -322,7 +337,7 @@ double WaveshareServos::get_position(int ID)
 {
     // Flip sign for motor ID 2 so robot-frame position is negated
     double pos = sm_st.ReadPos(ID) * 2 * M_PI / steps_;
-    if (ID == 2) pos = -pos;
+    if (ID == 2 || ID == 4) pos = -pos;
     return pos;
 }
 
@@ -330,7 +345,7 @@ double WaveshareServos::get_velocity(int ID)
 {
     // Flip sign for motor ID 2 so robot-frame velocity is negated
     double vel = sm_st.ReadSpeed(ID) * 2 * M_PI / steps_; // rads / s
-    if (ID == 2) vel = -vel;
+    if (ID == 2 || ID == 4) vel = -vel;
     return vel;
 }
 
