@@ -13,12 +13,12 @@ controller_manager:
 diff_drive_base:
   ros__parameters:
     # Wheel joint names (match URDF + ros2_control)
-    left_wheel_names:  ["left_wheel_joint"]
-    right_wheel_names: ["right_wheel_joint"]
+    left_wheel_names:  ["front_left_wheel_joint", "back_left_wheel_joint"]
+    right_wheel_names: ["front_right_wheel_joint", "back_right_wheel_joint"]
 
     # Geometry (MUST match your URDF)
-    wheel_separation: 0.280         # meters
-    wheel_radius:     0.050         # meters
+    wheel_separation: 0.1524         # meters was 0.28
+    wheel_radius:     0.03175         # meters was 0.05
 
     # Frames & topics
     base_frame_id: base_link
@@ -27,7 +27,7 @@ diff_drive_base:
     publish_wheel_data: true
 
     # Command interface
-    use_stamped_vel: false          # publishes /diff_drive_base/cmd_vel_unstamped
+    use_stamped_vel: true          # publishes /diff_drive_base/cmd_vel_unstamped
     cmd_vel_timeout: 0.5
     velocity_rolling_window_size: 10
 
