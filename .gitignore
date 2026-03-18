@@ -16,3 +16,4 @@ env/
 .idea/
 
 **/node_modules/
+*.code-workspace

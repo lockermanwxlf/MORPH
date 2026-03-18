@@ -154,7 +154,8 @@ def remove_stale_devices() -> None:
 
 async def main():
     async with BleakScanner(
-        service_uuids=["a14ddb44-90a8-4b95-a604-66bdafe8a0fa"],
+        #        service_uuids=["a14ddb44-90a8-4b95-a604-66bdafe8a0fa"],
+        service_uuids=["0000fe99-0000-1000-8000-00805f9b34fb"],
         detection_callback=advertisement_callback,
     ) as scanner:
         while True:
