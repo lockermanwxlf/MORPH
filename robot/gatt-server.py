@@ -4,8 +4,8 @@
 import asyncio
 import json
 import signal
+import socket
 from pathlib import Path
-import subprocess
 from typing import Any
 
 from dbus_fast import BusType, PropertyAccess, Variant
@@ -36,6 +36,9 @@ DEVICE_ID_PATH = Path("/etc/morph/device_id")
 
 # Global network state counter
 network_state_counter = 0
+
+# avahi-publish process handle
+avahi_proc: asyncio.subprocess.Process | None = None
 
 # Wifi hotspot stuff
 WIFI_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3"
@@ -98,6 +101,97 @@ class WifiStatusCharacteristic(ServiceInterface):
         return self.cached_payload
 
 
+async def _restart_avahi(device_id: str) -> None:
+    """Kill any running avahi-publish and start a fresh one if WiFi is up."""
+    global avahi_proc
+
+    # Kill the existing process
+    if avahi_proc is not None and avahi_proc.returncode is None:
+        try:
+            avahi_proc.terminate()
+            await avahi_proc.wait()
+        except Exception as e:
+            print(f"Error stopping avahi-publish: {e}")
+    avahi_proc = None
+
+    # Check whether there is an active WiFi connection
+    check = await asyncio.create_subprocess_exec(
+        "nmcli",
+        "-t",
+        "-f",
+        "active,ssid",
+        "device",
+        "wifi",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    stdout, _ = await check.communicate()
+    connected = any(
+        line.startswith("yes:") for line in stdout.decode().strip().splitlines()
+    )
+
+    if not connected:
+        print("avahi-publish: no active WiFi — not starting", flush=True)
+        return
+
+    hostname = socket.gethostname()
+    service_name = f"MORPH-{hostname}"
+    txt = f"DEVICE_ID={device_id}" if device_id else ""
+    cmd = ["avahi-publish", "-s", service_name, "_morph-ws._tcp", "8765"]
+    if txt:
+        cmd.append(txt)
+    print(f"Starting avahi-publish: {' '.join(cmd)}", flush=True)
+    avahi_proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+
+
+async def _apply_wifi(ssid: str, psk: str) -> None:
+    """Rescan, delete any existing profile, then connect."""
+    # Trigger a fresh scan so nmcli doesn't fail with "No network with SSID found"
+    # when its cache is stale (e.g. device just powered on or moved networks).
+    print(f"Rescanning WiFi before connecting to '{ssid}'...", flush=True)
+    rescan_proc = await asyncio.create_subprocess_exec(
+        "nmcli",
+        "device",
+        "wifi",
+        "rescan",
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await rescan_proc.wait()
+    # Give the adapter a moment to populate scan results
+    await asyncio.sleep(3)
+
+    delete_proc = await asyncio.create_subprocess_exec(
+        "nmcli",
+        "connection",
+        "delete",
+        ssid,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await delete_proc.wait()
+    proc = await asyncio.create_subprocess_exec(
+        "nmcli",
+        "device",
+        "wifi",
+        "connect",
+        ssid,
+        "password",
+        psk,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await proc.communicate()
+    if proc.returncode == 0:
+        print(f"Successfully connected to WiFi network '{ssid}'")
+    else:
+        print(f"Failed to connect to WiFi network '{ssid}': {stderr.decode()}")
+
+
 class WifiProvisioningCharacteristic(ServiceInterface):
     def __init__(self) -> None:
         super().__init__("org.bluez.GattCharacteristic1")
@@ -116,7 +210,7 @@ class WifiProvisioningCharacteristic(ServiceInterface):
         return ["write"]
 
     @method()
-    def WriteValue(self, value: "ay", _options: "a{sv}") -> None:
+    async def WriteValue(self, value: "ay", _options: "a{sv}") -> None:
         self.value = bytes(value)
         try:
             payload = json.loads(self.value.decode("utf-8"))
@@ -124,17 +218,7 @@ class WifiProvisioningCharacteristic(ServiceInterface):
             psk = payload.get("psk")
             if ssid and psk:
                 print(f"Received WiFi provisioning data: SSID={ssid}, PSK={psk}")
-                result = subprocess.run(
-                    ["nmcli", "device", "wifi", "connect", ssid, "password", psk],
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode == 0:
-                    print(f"Successfully connected to WiFi network '{ssid}'")
-                else:
-                    print(
-                        f"Failed to connect to WiFi network '{ssid}': {result.stderr}"
-                    )
+                asyncio.create_task(_apply_wifi(ssid, psk))
         except Exception as e:
             print(f"Error processing WiFi provisioning data: {e}")
 
@@ -299,6 +383,7 @@ async def main() -> None:
     # Fetch initial wifi state
     print("Fetching initial WiFi state...", flush=True)
     await wifi_status_ch.update_cached_value()
+    await _restart_avahi(device_id)
 
     bus.export(APP_PATH, app)
     bus.export(SERVICE_PATH, svc)
@@ -322,23 +407,22 @@ async def main() -> None:
     ) -> None:
         if interface_name == "org.freedesktop.NetworkManager":
             if "State" in changed_properties:
-                pass
-                # new_state = changed_properties["State"].value
-                # print(f"NetworkManager State changed to: {new_state}", flush=True)
-                # adv.increment_network_state()
-
-            elif "PrimaryConnection" in changed_properties:
-                print("Primary active connection changed.", flush=True)
+                new_state = changed_properties["State"].value
+                print(f"NetworkManager State changed to: {new_state}", flush=True)
 
                 async def sync_network_state():
                     global network_state_counter
                     network_state_counter += 1
                     await wifi_status_ch.update_cached_value()
-                    adv.emit_properties_changed(
-                        {"ManufacturerData": adv.ManufacturerData}
-                    )
+                    await _restart_avahi(device_id)
+                    if "PrimaryConnection" in changed_properties:
+                        adv.emit_properties_changed(
+                            {"ManufacturerData": adv.ManufacturerData}
+                        )
 
-                asyncio.create_task(sync_network_state())
+                # 70 = CONNECTED_GLOBAL (IP assigned), 20 = DISCONNECTED, 30 = DISCONNECTING
+                if new_state in (70, 20, 30):
+                    asyncio.create_task(sync_network_state())
 
     props_iface.on_properties_changed(on_network_state_changed)
 
@@ -356,6 +440,11 @@ async def main() -> None:
     loop.add_signal_handler(signal.SIGINT, stop_event.set)
     loop.add_signal_handler(signal.SIGTERM, stop_event.set)
     await stop_event.wait()
+
+    # Stop avahi-publish on shutdown
+    if avahi_proc is not None and avahi_proc.returncode is None:
+        avahi_proc.terminate()
+        await avahi_proc.wait()
 
     await adv_mgr.call_unregister_advertisement(ADV_PATH)
     await gatt_mgr.call_unregister_application(APP_PATH)

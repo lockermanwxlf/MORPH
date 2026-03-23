@@ -6,7 +6,6 @@ import { useConnectedDevice } from "@/utils/ConnectedDeviceContext";
 import { requireBluetoothAPI } from "@/utils/preload-apis";
 import { useBluetoothDevices } from "@/utils/useBluetoothDevices";
 import { type MorphDevice, useMorphDevices } from "@/utils/useMorphDevices";
-import { usePlatformCapabilities } from "@/utils/usePlatformCapabilites";
 
 export const Route = createFileRoute("/devices")({
 	component: RouteComponent,
@@ -19,7 +18,6 @@ function BluetoothDeviceComponent({
 	device: BluetoothDevice;
 	openWifiDialogue: () => void;
 }) {
-	const capabilities = usePlatformCapabilities();
 	const bluetoothApi = requireBluetoothAPI();
 
 	function ssidToLabel(ssid: string | null) {
@@ -30,10 +28,6 @@ function BluetoothDeviceComponent({
 
 	function openHotspotSettings() {
 		bluetoothApi.openHotspotSettings();
-	}
-
-	function openBluetoothSettings() {
-		bluetoothApi.openBluetoothSettings();
 	}
 
 	return (
@@ -65,19 +59,6 @@ function BluetoothDeviceComponent({
 					Hotspot/Tethering Settings
 				</button>
 			</div>
-			{capabilities.supportsBluetoothTethering && (
-				<div className="group-hover:mt-4 opacity-0 overflow-hidden max-h-0 group-hover:max-h-none transition-all duration-200 group-hover:opacity-100">
-					<button
-						type="button"
-						className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
-						onClick={() => {
-							openBluetoothSettings();
-						}}
-					>
-						Bluetooth Settings
-					</button>
-				</div>
-			)}
 		</div>
 	);
 }
@@ -256,9 +237,8 @@ function RouteComponent() {
 						<br />
 						First, ensure the device is on the same wifi as you. If your network
 						is blocking local communication, you can connect both devices to a
-						mobile hotspot, or you can enable bluetooth tethering and connect to
-						the device over bluetooth, or you can start a mobile hotspot on this
-						computer and connect the device to it. <br />
+						mobile hotspot, or you can start a mobile hotspot on this computer
+						and connect the device to it. <br />
 						<br /> Hover over a device for more information.
 					</span>
 				</div>

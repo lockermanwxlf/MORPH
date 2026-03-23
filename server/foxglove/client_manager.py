@@ -11,11 +11,15 @@ class ClientManager:
         self.device_id_to_client: dict[str, FoxgloveClient] = {}
 
     async def add_robot(self, robot: Robot):
-        client = FoxgloveClient(robot, self.sio)
         if robot.device_id in self.device_id_to_client:
-            print(f"Already connected to robot {robot.device_id}, skipping")
-            return
+            # If IP is the same, break.
+            if not set(
+                self.device_id_to_client[robot.device_id].robot.ip_addresses
+            ).isdisjoint(robot.ip_addresses):
+                return
+            await self.remove_robot(robot.device_id)
 
+        client = FoxgloveClient(robot, self.sio)
         self.clients.append(client)
         self.device_id_to_client[robot.device_id] = client
 
