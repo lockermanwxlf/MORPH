@@ -26,7 +26,7 @@ NM_SERVICE = "org.freedesktop.NetworkManager"
 NM_PATH = "/org/freedesktop/NetworkManager"
 NM_IFACE = "org.freedesktop.NetworkManager"
 
-SERVICE_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fa"
+SERVICE_UUID = "fe99"
 CHAR_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fb"
 # Advertising interval in milliseconds (BlueZ accepts 20ms to 10,485s).
 # Use equal values for near-fixed cadence, or a small range.

@@ -3,8 +3,9 @@ import {
 	createRootRouteWithContext,
 	Outlet,
 	redirect,
+	useLocation,
 } from "@tanstack/react-router";
-import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
 
 import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
 import { ConnectedDeviceProvider } from "../utils/ConnectedDeviceContext";
@@ -36,12 +37,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootLayout() {
+	const { pathname } = useLocation();
+	const showSidebar = !pathname.startsWith("/setup");
+
 	return (
 		<TanStackQueryProvider>
 			<SocketProvider>
 				<ConnectedDeviceProvider>
-					<div className="min-h-dvh flex flex-col">
-						<main className="flex min-h-0 flex-1">
+					<div className="flex min-h-dvh">
+						{showSidebar ? <Sidebar /> : null}
+						<main className="flex min-h-0 min-w-0 flex-1">
 							<Outlet />
 						</main>
 					</div>
