@@ -11,6 +11,7 @@ import TanStackQueryProvider from "../integrations/tanstack-query/root-provider"
 import { ConnectedDeviceProvider } from "../utils/ConnectedDeviceContext";
 import { SocketProvider } from "../utils/SocketContext";
 import "../styles.css";
+import { SlamMapProvider } from "@/robot/slam-map";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -44,12 +45,14 @@ function RootLayout() {
 		<TanStackQueryProvider>
 			<SocketProvider>
 				<ConnectedDeviceProvider>
-					<div className="flex min-h-dvh">
-						{showSidebar ? <Sidebar /> : null}
-						<main className="flex min-h-0 min-w-0 flex-1">
-							<Outlet />
-						</main>
-					</div>
+					<SlamMapProvider>
+						<div className="flex min-h-dvh">
+							{showSidebar ? <Sidebar /> : null}
+							<main className="flex min-h-0 min-w-0 flex-1">
+								<Outlet />
+							</main>
+						</div>
+					</SlamMapProvider>
 				</ConnectedDeviceProvider>
 			</SocketProvider>
 		</TanStackQueryProvider>
