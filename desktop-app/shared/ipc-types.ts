@@ -16,3 +16,10 @@ export type Unsubscribe = () => void;
 export interface HostCapabilities {
 	supportsBluetoothTethering: boolean;
 }
+
+export type SetupGradeLevel = "K-8" | "High School" | "College";
+
+export interface SetupUserProfile {
+	gradeLevel: SetupGradeLevel;
+	completedAt: string;
+}

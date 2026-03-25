@@ -1,6 +1,8 @@
+import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain } from "electron";
+import type { SetupGradeLevel, SetupUserProfile } from "../shared/ipc-types";
 
 import { createBackendManager } from "./backend";
 import {
@@ -17,12 +19,68 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const RENDERER_DIST = path.join(__dirname, "../dist");
 
 let mainWindow: BrowserWindow | null = null;
+const SETUP_PROFILE_FILE = "setup-profile.json";
 
 function broadcast(channel: string, payload: unknown) {
 	if (!mainWindow || mainWindow.isDestroyed()) {
 		return;
 	}
 	mainWindow.webContents.send(channel, payload);
+}
+
+function getSetupProfilePath() {
+	return path.join(app.getPath("userData"), SETUP_PROFILE_FILE);
+}
+
+function isSetupGradeLevel(value: unknown): value is SetupGradeLevel {
+	return value === "K-8" || value === "High School" || value === "College";
+}
+
+function isSetupUserProfile(value: unknown): value is SetupUserProfile {
+	if (!value || typeof value !== "object") {
+		return false;
+	}
+
+	const profile = value as Partial<SetupUserProfile>;
+	return (
+		isSetupGradeLevel(profile.gradeLevel) &&
+		typeof profile.completedAt === "string"
+	);
+}
+
+async function readSetupProfile(): Promise<SetupUserProfile | null> {
+	try {
+		const content = await fs.readFile(getSetupProfilePath(), "utf8");
+		const parsed: unknown = JSON.parse(content);
+		if (!isSetupUserProfile(parsed)) {
+			return null;
+		}
+		return parsed;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+			return null;
+		}
+		console.error("Failed reading setup profile:", error);
+		return null;
+	}
+}
+
+async function saveSetupProfile(
+	gradeLevel: SetupGradeLevel,
+): Promise<SetupUserProfile> {
+	const profile: SetupUserProfile = {
+		gradeLevel,
+		completedAt: new Date().toISOString(),
+	};
+
+	await fs.mkdir(app.getPath("userData"), { recursive: true });
+	await fs.writeFile(
+		getSetupProfilePath(),
+		JSON.stringify(profile, null, 2),
+		"utf8",
+	);
+
+	return profile;
 }
 
 const scannerManager = createScannerManager({
@@ -92,6 +150,19 @@ app.whenReady().then(async () => {
 	});
 	ipcMain.handle("bluetooth:open-settings", () => openBluetoothSettings());
 	ipcMain.handle("server:get-port", () => backendManager.getPort());
+	ipcMain.handle("setup:get-profile", async () => {
+		return readSetupProfile();
+	});
+	ipcMain.handle(
+		"setup:save-profile",
+		async (_event, payload: { gradeLevel?: unknown }) => {
+			const gradeLevel = payload?.gradeLevel;
+			if (!isSetupGradeLevel(gradeLevel)) {
+				throw new Error("Invalid grade level");
+			}
+			return saveSetupProfile(gradeLevel);
+		},
+	);
 
 	ipcMain.handle(
 		"bluetooth:send-wifi-credentials",

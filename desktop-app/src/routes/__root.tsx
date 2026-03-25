@@ -1,5 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import {
+	createRootRouteWithContext,
+	Outlet,
+	redirect,
+} from "@tanstack/react-router";
 import Header from "../components/Header";
 
 import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
@@ -12,6 +16,22 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+	beforeLoad: async ({ location }) => {
+		if (!window.setupAPI) {
+			return;
+		}
+
+		const profile = await window.setupAPI.getProfile();
+		const isSetupRoute = location.pathname.startsWith("/setup");
+
+		if (isSetupRoute) {
+			return;
+		}
+
+		if (!profile && !isSetupRoute) {
+			throw redirect({ to: "/setup" });
+		}
+	},
 	component: RootLayout,
 });
 

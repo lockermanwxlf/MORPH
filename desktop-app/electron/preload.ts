@@ -3,6 +3,7 @@ import type {
 	BluetoothDevice,
 	HostCapabilities,
 	OpenSettingsResult,
+	SetupGradeLevel,
 	Unsubscribe,
 } from "../shared/ipc-types";
 
@@ -61,4 +62,10 @@ contextBridge.exposeInMainWorld("platformAPI", {
 			supportsBluetoothTethering: process.platform !== "darwin",
 		};
 	},
+});
+
+contextBridge.exposeInMainWorld("setupAPI", {
+	getProfile: () => ipcRenderer.invoke("setup:get-profile"),
+	saveProfile: (gradeLevel: SetupGradeLevel) =>
+		ipcRenderer.invoke("setup:save-profile", { gradeLevel }),
 });
