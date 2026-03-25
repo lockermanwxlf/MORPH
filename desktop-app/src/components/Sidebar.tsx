@@ -23,11 +23,18 @@ export default function Sidebar() {
 					Devices
 				</Link>
 				<Link
-					to="/lesson"
+					to="/control-panel"
 					className={baseLinkClass}
 					activeProps={{ className: activeLinkClass }}
 				>
-					Learn
+					Control Panel
+				</Link>
+				<Link
+					to="/lessons"
+					className={baseLinkClass}
+					activeProps={{ className: activeLinkClass }}
+				>
+					Lessons
 				</Link>
 			</nav>
 		</aside>

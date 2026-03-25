@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DPad } from "@/components/DPad";
 import { useSocket } from "@/utils/SocketContext";
 
-export const Route = createFileRoute("/lesson")({
+export const Route = createFileRoute("/lessons/intro")({
 	component: RouteComponent,
 });
 

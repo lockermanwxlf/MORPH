@@ -11,10 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Setup2RouteImport } from './routes/setup2'
 import { Route as SetupRouteImport } from './routes/setup'
-import { Route as LessonRouteImport } from './routes/lesson'
 import { Route as DevicesRouteImport } from './routes/devices'
 import { Route as ControlPanelRouteImport } from './routes/control-panel'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LessonsIndexRouteImport } from './routes/lessons/index'
+import { Route as LessonsIntroRouteImport } from './routes/lessons/intro'
 
 const Setup2Route = Setup2RouteImport.update({
   id: '/setup2',
@@ -24,11 +25,6 @@ const Setup2Route = Setup2RouteImport.update({
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LessonRoute = LessonRouteImport.update({
-  id: '/lesson',
-  path: '/lesson',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevicesRoute = DevicesRouteImport.update({
@@ -46,31 +42,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LessonsIndexRoute = LessonsIndexRouteImport.update({
+  id: '/lessons/',
+  path: '/lessons/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LessonsIntroRoute = LessonsIntroRouteImport.update({
+  id: '/lessons/intro',
+  path: '/lessons/intro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/control-panel': typeof ControlPanelRoute
   '/devices': typeof DevicesRoute
-  '/lesson': typeof LessonRoute
   '/setup': typeof SetupRoute
   '/setup2': typeof Setup2Route
+  '/lessons/intro': typeof LessonsIntroRoute
+  '/lessons/': typeof LessonsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/control-panel': typeof ControlPanelRoute
   '/devices': typeof DevicesRoute
-  '/lesson': typeof LessonRoute
   '/setup': typeof SetupRoute
   '/setup2': typeof Setup2Route
+  '/lessons/intro': typeof LessonsIntroRoute
+  '/lessons': typeof LessonsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/control-panel': typeof ControlPanelRoute
   '/devices': typeof DevicesRoute
-  '/lesson': typeof LessonRoute
   '/setup': typeof SetupRoute
   '/setup2': typeof Setup2Route
+  '/lessons/intro': typeof LessonsIntroRoute
+  '/lessons/': typeof LessonsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -78,28 +87,38 @@ export interface FileRouteTypes {
     | '/'
     | '/control-panel'
     | '/devices'
-    | '/lesson'
     | '/setup'
     | '/setup2'
+    | '/lessons/intro'
+    | '/lessons/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/control-panel' | '/devices' | '/lesson' | '/setup' | '/setup2'
+  to:
+    | '/'
+    | '/control-panel'
+    | '/devices'
+    | '/setup'
+    | '/setup2'
+    | '/lessons/intro'
+    | '/lessons'
   id:
     | '__root__'
     | '/'
     | '/control-panel'
     | '/devices'
-    | '/lesson'
     | '/setup'
     | '/setup2'
+    | '/lessons/intro'
+    | '/lessons/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ControlPanelRoute: typeof ControlPanelRoute
   DevicesRoute: typeof DevicesRoute
-  LessonRoute: typeof LessonRoute
   SetupRoute: typeof SetupRoute
   Setup2Route: typeof Setup2Route
+  LessonsIntroRoute: typeof LessonsIntroRoute
+  LessonsIndexRoute: typeof LessonsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,13 +135,6 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lesson': {
-      id: '/lesson'
-      path: '/lesson'
-      fullPath: '/lesson'
-      preLoaderRoute: typeof LessonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/devices': {
@@ -146,6 +158,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lessons/': {
+      id: '/lessons/'
+      path: '/lessons'
+      fullPath: '/lessons/'
+      preLoaderRoute: typeof LessonsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lessons/intro': {
+      id: '/lessons/intro'
+      path: '/lessons/intro'
+      fullPath: '/lessons/intro'
+      preLoaderRoute: typeof LessonsIntroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -153,9 +179,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ControlPanelRoute: ControlPanelRoute,
   DevicesRoute: DevicesRoute,
-  LessonRoute: LessonRoute,
   SetupRoute: SetupRoute,
   Setup2Route: Setup2Route,
+  LessonsIntroRoute: LessonsIntroRoute,
+  LessonsIndexRoute: LessonsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
