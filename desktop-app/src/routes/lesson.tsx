@@ -48,5 +48,5 @@ function RouteComponent() {
 				</div>
 			</section>
 		</div>
-	);
+	)
 }

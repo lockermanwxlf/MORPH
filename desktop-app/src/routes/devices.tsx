@@ -60,7 +60,7 @@ function BluetoothDeviceComponent({
 				</button>
 			</div>
 		</div>
-	);
+	)
 }
 
 function WifiDeviceComponent({ device }: { device: MorphDevice }) {
@@ -78,14 +78,14 @@ function WifiDeviceComponent({ device }: { device: MorphDevice }) {
 					type="button"
 					className="w-full rounded-lg border border-(--line) bg-white/8 text-xs font-medium transition-colors hover:bg-white/16 px-3 py-2 text-(--ink-0)"
 					onClick={() => {
-						connect(device);
+						connect(device)
 					}}
 				>
 					Connect to Device
 				</button>
 			</div>
 		</div>
-	);
+	)
 }
 
 function ChangeWifiDialogueComponent({
@@ -106,7 +106,7 @@ function ChangeWifiDialogueComponent({
 
 	async function submit() {
 		if (!ssid.trim()) {
-			return;
+			return
 		}
 		setIsSubmitting(true);
 		try {
@@ -114,7 +114,7 @@ function ChangeWifiDialogueComponent({
 				address: device.address,
 				ssid,
 				pskLength: psk.length,
-			});
+			})
 			await bluetoothApi.sendWifiCredentials(device.address, ssid, psk);
 			onClose();
 		} catch (error) {
@@ -130,7 +130,7 @@ function ChangeWifiDialogueComponent({
 				className="bg-white/8 rounded-lg p-4 shadow-lg"
 				onSubmit={(event) => {
 					event.preventDefault();
-					void submit();
+					void submit()
 				}}
 			>
 				<p>
@@ -197,7 +197,7 @@ function ChangeWifiDialogueComponent({
 				</button>
 			</form>
 		</div>
-	);
+	)
 }
 
 function RouteComponent() {
@@ -257,5 +257,5 @@ function RouteComponent() {
 				)}
 			</div>
 		</div>
-	);
+	)
 }

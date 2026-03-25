@@ -41,7 +41,6 @@ function RootLayout() {
 			<SocketProvider>
 				<ConnectedDeviceProvider>
 					<div className="min-h-dvh flex flex-col">
-						<Header />
 						<main className="flex min-h-0 flex-1">
 							<Outlet />
 						</main>

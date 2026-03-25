@@ -42,26 +42,26 @@ function RouteComponent() {
 		} finally {
 			setIsConnecting(false);
 		}
-	};
+	}
 
 	useEffect(() => {
 		if (!socket) {
-			return;
+			return
 		}
 
 		const handleDisconnect = () => {
 			setDisconnected(true);
-		};
+		}
 
 		const handleLog = (payload: { message?: string }) => {
 			if (!payload?.message) {
-				return;
+				return
 			}
 			setLogs((prev) => [
 				{ id: ++logIdRef.current, message: payload.message || "" },
 				...prev.slice(0, 99),
-			]);
-		};
+			])
+		}
 
 		socket.on("disconnect", handleDisconnect);
 		socket.on("log", handleLog);
@@ -69,19 +69,19 @@ function RouteComponent() {
 		return () => {
 			socket.off("disconnect", handleDisconnect);
 			socket.off("log", handleLog);
-		};
+		}
 	}, [socket]);
 
 	useEffect(() => {
 		if (!disconnected) {
-			return;
+			return
 		}
 		const timeoutId = setTimeout(() => {
 			navigate({ to: "/devices" });
 		}, 3000);
 		return () => {
 			clearTimeout(timeoutId);
-		};
+		}
 	}, [disconnected, navigate]);
 
 	return (
@@ -142,7 +142,7 @@ function RouteComponent() {
 						<button
 							type="button"
 							onClick={() => {
-								void connectToDevice();
+								void connectToDevice()
 							}}
 							disabled={!socket || !selectedDevice || isConnecting}
 							className="rounded-lg border border-(--line) bg-[rgba(36,199,184,0.14)] px-4 py-2 text-sm font-medium text-(--ink-0) transition-colors hover:bg-[rgba(36,199,184,0.24)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -187,5 +187,5 @@ function RouteComponent() {
 				</div>
 			</section>
 		</div>
-	);
+	)
 }

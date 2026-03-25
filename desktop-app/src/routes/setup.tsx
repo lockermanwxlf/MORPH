@@ -27,7 +27,7 @@ function SetupWelcomePage() {
 		} finally {
 			setIsSaving(false);
 		}
-	};
+	}
 
 	return (
 		<div className="flex w-full flex-1 items-center justify-center px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
@@ -52,5 +52,5 @@ function SetupWelcomePage() {
 				{error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
 			</section>
 		</div>
-	);
+	)
 }
