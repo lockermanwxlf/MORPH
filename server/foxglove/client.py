@@ -34,15 +34,16 @@ class FoxgloveClient:
 
     async def log(self, msg: str):
         print("[FoxgloveClient]", msg)
-        with open("/Users/jake/Programming/MORPH/desktop-app/logs.txt", "+a") as file:
-            file.write(f"[FoxgloveClient] {msg}\n\n")
         if self.listener_sid:
             await self.sio.emit("log", {"message": msg}, to=self.listener_sid)
 
     def _emit_ros_message(self, data):
         print("ROSDATA:", data)
-        with open("/Users/jake/Programming/MORPH/desktop-app/logs.txt", "+a") as file:
-            file.write(f"[ROSDATA] {data}\n\n")
+
+    async def _emit_map_data(self, data):
+        if not self.listener_sid:
+            return
+        await self.sio.emit("map_data", data, to=self.listener_sid)
 
     def set_listener_sid(self, sid: str | None):
         self.listener_sid = sid
@@ -292,13 +293,7 @@ class FoxgloveClient:
                     )
                     return
 
-                self._emit_ros_message(
-                    {
-                        "channel_id": actual_channel_id,
-                        "timestamp_ns": timestamp_ns,
-                        "data": grid_data,
-                    }
-                )
+                await self._emit_map_data(grid_data)
                 await self.log(
                     f"→ [{actual_channel_id}] OccupancyGrid CDR: {grid_data['width']}x{grid_data['height']} "
                     f"(resolution={grid_data['resolution']}, data_len={grid_data['data_length']})"

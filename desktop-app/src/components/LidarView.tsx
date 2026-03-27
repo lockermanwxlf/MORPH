@@ -2,22 +2,10 @@ import { useEffect, useRef } from "react";
 import type { SlamMap } from "@/robot/SlamMap";
 import { useSocket } from "@/utils/SocketContext";
 
-function randomMap(): SlamMap {
-	const width = 500;
-	const height = 200;
-	return {
-		data: Array.from({ length: width * height }, () => Math.random() * 100),
-		height,
-		width,
-	};
-}
-
 export const LidarView = () => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const imgDataRef = useRef<ImageData | null>(null);
 	const { socket } = useSocket();
-
-	// Get the subscribe function directly from the context, NOT a state variable
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -27,8 +15,11 @@ export const LidarView = () => {
 		if (!ctx) return;
 
 		// Write to canvas when new map is seen.
-		const callback = (newMap: SlamMap) => {
+		const renderMap = (newMap: SlamMap) => {
 			const { data, width: n, height: m } = newMap;
+			if (!Array.isArray(data) || n <= 0 || m <= 0 || data.length !== n * m) {
+				return;
+			}
 
 			if (
 				!imgDataRef.current ||
@@ -44,7 +35,9 @@ export const LidarView = () => {
 			const pixels = imgData.data;
 
 			for (let i = 0; i < data.length; i++) {
-				const color = (data[i] * 2.55) | 0;
+				const value = data[i];
+				const color =
+					value < 0 ? 127 : Math.max(0, Math.min(255, Math.round(value * 2.55)));
 				const pos = i << 2;
 				pixels[pos] = color;
 				pixels[pos + 1] = color;
@@ -55,12 +48,14 @@ export const LidarView = () => {
 			ctx.putImageData(imgData, 0, 0);
 		};
 
-		const interval = setInterval(() => {
-			callback(randomMap());
-		}, 100);
+		const handleMapData = (payload: SlamMap) => {
+			renderMap(payload);
+		};
+
+		socket?.on("map_data", handleMapData);
 
 		return () => {
-			clearInterval(interval);
+			socket?.off("map_data", handleMapData);
 		};
 	}, [socket]);
 

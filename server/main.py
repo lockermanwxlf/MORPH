@@ -185,7 +185,7 @@ async def handle_diff_drive_wasd(sid: str, data: dict):
     s = data.get("s", False)
     d = data.get("d", False)
     direction_to_linear_x = {"w": 0.5, "s": -0.5}
-    direction_to_angular_z = {"a": 0.5, "d": -0.5}
+    direction_to_angular_z = {"a": 5, "d": -5}
     twist = TwistStamped(
         0,
         0,
