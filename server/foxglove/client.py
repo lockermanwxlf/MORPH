@@ -12,7 +12,7 @@ from foxglove.constants import (
     SERVER_FRAME_HEADER_LEN,
 )
 from foxglove.messages.twist_stamped import TwistStamped
-from foxglove.protocol import parse_cdr_string
+from foxglove.protocol import parse_cdr_string, parse_cdr_occupancy_grid
 from robots.robot import Robot
 
 
@@ -20,23 +20,29 @@ class FoxgloveClient:
     def __init__(self, robot: Robot, sio: AsyncServer):
         self.robot = robot
         self.host = robot.ip_addresses[0]
-        self.topics_to_subcribe = ["/map"]
+        self.topics_to_subscribe = ["/map"]
         self.port = robot.port
         self.device_id = robot.device_id
         self._ws: ClientConnection | None = None
         self.channel_id = 1
         self.sio = sio
         self.listener_sid: str | None = None
-        self.subscribed_topics = []
+        self.subscribed_topics = {}
+        self.subscription_to_channel = {}  # Map subscription ID to channel ID
         self.connected = False
+        self.channel_info = {}
 
     async def log(self, msg: str):
         print("[FoxgloveClient]", msg)
+        with open("/Users/jake/Programming/MORPH/desktop-app/logs.txt", "+a") as file:
+            file.write(f"[FoxgloveClient] {msg}\n\n")
         if self.listener_sid:
             await self.sio.emit("log", {"message": msg}, to=self.listener_sid)
 
-    def _emit_ros_message(data):
-        print(data)
+    def _emit_ros_message(self, data):
+        print("ROSDATA:", data)
+        with open("/Users/jake/Programming/MORPH/desktop-app/logs.txt", "+a") as file:
+            file.write(f"[ROSDATA] {data}\n\n")
 
     def set_listener_sid(self, sid: str | None):
         self.listener_sid = sid
@@ -69,13 +75,16 @@ class FoxgloveClient:
         self.connected = True
         await self._handle_messages()
 
-    async def subscribe_to_channel(self, channel_id: int, topic: str) -> None:
+    async def subscribe_to_channel(
+        self, channel_id: int, topic: str, encoding: str = "cdr"
+    ) -> None:
         """
         Subscribe to a server-advertised channel.
 
         Args:
             channel_id: Channel ID to subscribe to
             topic: Topic name for logging
+            encoding: Message encoding (default: cdr)
         """
         try:
             subscription_id = len(self.subscribed_topics) + 1
@@ -86,14 +95,17 @@ class FoxgloveClient:
                         "id": subscription_id,
                         "channelId": channel_id,
                         "topic": topic,
-                        "encoding": "json",
+                        "encoding": encoding,
                     }
                 ],
             }
             await self._ws.send(json.dumps(subscribe_msg))
             self.subscribed_topics[subscription_id] = topic
+            self.subscription_to_channel[subscription_id] = (
+                channel_id  # Map subscription to channel
+            )
             await self.log(
-                f"✓ Subscribed: {topic} (subId={subscription_id}, channelId={channel_id})"
+                f"✓ Subscribed: {topic} (subId={subscription_id}, channelId={channel_id}, encoding={encoding})"
             )
         except Exception as e:
             await self.log(f"⚠️ Error subscribing to {topic}: {e}")
@@ -153,6 +165,8 @@ class FoxgloveClient:
         data = json.loads(message)
         op = data.get("op")
 
+        await self.log(f"DATA! {data}")
+
         if op == "advertise":
             # Server is advertising available channels/topics
             channels = data.get("channels", [])
@@ -171,12 +185,13 @@ class FoxgloveClient:
                     "schemaName": schema_name,
                 }
                 await self.log(
-                    f" • {topic} (channel={channel_id}, encoding={encoding})"
+                    f"TOPIC FOUND {topic} (channel={channel_id}, encoding={encoding})"
                 )
 
                 # Auto-subscribe to topics we're interested in
                 if topic in self.topics_to_subscribe:
-                    await self.subscribe_to_channel(channel_id, topic)
+                    await self.log("subscribing to " + topic)
+                    await self.subscribe_to_channel(channel_id, topic, encoding)
         else:
             await self.log(f"→ Protocol message: {data}")
 
@@ -199,9 +214,18 @@ class FoxgloveClient:
             return
 
         # Parse frame header
-        channel_id = struct.unpack_from("<I", message_bytes, 1)[0]
+        subscription_or_channel_id = struct.unpack_from("<I", message_bytes, 1)[0]
         timestamp_ns = struct.unpack_from("<Q", message_bytes, 1 + 4)[0]
         payload = message_bytes[SERVER_FRAME_HEADER_LEN:]
+
+        # Check if this is a subscription ID (from a subscribe message) or a channel ID
+        actual_channel_id = self.subscription_to_channel.get(
+            subscription_or_channel_id, subscription_or_channel_id
+        )
+
+        await self.log(
+            f"BINFROMID {subscription_or_channel_id} (actual channel: {actual_channel_id})"
+        )
 
         # Try to decode as JSON first
         try:
@@ -209,53 +233,90 @@ class FoxgloveClient:
             maybe_json = json.loads(txt)
             self._emit_ros_message(
                 {
-                    "channel_id": channel_id,
+                    "channel_id": actual_channel_id,
                     "timestamp_ns": timestamp_ns,
                     "data": maybe_json,
                 }
             )
-            await self.log(f"→ [{channel_id}] JSON @ {timestamp_ns} ns: {maybe_json}")
+            await self.log(
+                f"→ [{actual_channel_id}] JSON @ {timestamp_ns} ns: {maybe_json}"
+            )
             return
         except Exception:
             pass
 
         # Try CDR encoding for std_msgs/msg/String
-        info = self.channel_info.get(channel_id, {})
+        info = self.channel_info.get(actual_channel_id, {})
         schema = info.get("schemaName")
         encoding = info.get("encoding")
+        topic = info.get("topic", "unknown")
 
         # Skip ROS log messages to reduce noise
         if schema == "rcl_interfaces/msg/Log":
             return
+
+        await self.log(
+            f"  Channel {actual_channel_id} topic: {topic}, schema: {schema}, encoding: {encoding}"
+        )
 
         if schema == "std_msgs/msg/String" and encoding == ENCODING_CDR:
             try:
                 cdr_string = parse_cdr_string(payload)
                 self._emit_ros_message(
                     {
-                        "channel_id": channel_id,
+                        "channel_id": actual_channel_id,
                         "timestamp_ns": timestamp_ns,
                         "data": {"data": cdr_string},
                     }
                 )
                 await self.log(
-                    f"→ [{channel_id}] CDR @ {timestamp_ns} ns: {cdr_string}"
+                    f"→ [{actual_channel_id}] CDR @ {timestamp_ns} ns: {cdr_string}"
                 )
             except Exception:
                 await self.log(
-                    f"→ [{channel_id}] Unable to parse CDR String ({len(payload)}B)"
+                    f"→ [{actual_channel_id}] Unable to parse CDR String ({len(payload)}B)"
+                )
+        elif schema == "nav_msgs/msg/OccupancyGrid" and encoding == ENCODING_CDR:
+            try:
+                grid_data = parse_cdr_occupancy_grid(payload)
+                if "error" in grid_data:
+                    self._emit_ros_message(
+                        {
+                            "channel_id": actual_channel_id,
+                            "timestamp_ns": timestamp_ns,
+                            "data": grid_data,
+                        }
+                    )
+                    await self.log(
+                        f"→ [{actual_channel_id}] OccupancyGrid parse error: {grid_data['error']}"
+                    )
+                    return
+
+                self._emit_ros_message(
+                    {
+                        "channel_id": actual_channel_id,
+                        "timestamp_ns": timestamp_ns,
+                        "data": grid_data,
+                    }
+                )
+                await self.log(
+                    f"→ [{actual_channel_id}] OccupancyGrid CDR: {grid_data['width']}x{grid_data['height']} "
+                    f"(resolution={grid_data['resolution']}, data_len={grid_data['data_length']})"
+                )
+            except Exception as e:
+                await self.log(
+                    f"→ [{actual_channel_id}] Unable to parse OccupancyGrid: {e}"
                 )
         else:
-            # Unknown encoding or schema
-            head = payload[:32]
+            # Unknown encoding or schema - log full hex for analysis
+            await self.log(
+                f"→ [{actual_channel_id}] {schema or 'unknown'} with {encoding or 'unknown'} "
+                f"encoding not decoded; payload hex (first 128 bytes): {payload[:128].hex()}"
+            )
             self._emit_ros_message(
                 {
-                    "channel_id": channel_id,
+                    "channel_id": actual_channel_id,
                     "timestamp_ns": timestamp_ns,
                     "data": "<non-JSON payload>",
                 }
-            )
-            await self.log(
-                f"→ [{channel_id}] {schema or 'unknown'} with {encoding or 'unknown'} "
-                f"encoding not decoded; first bytes: {head.hex()} …"
             )
