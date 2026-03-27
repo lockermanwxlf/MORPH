@@ -4,15 +4,18 @@ import { useWASDController } from "./useWASDController";
 interface DPadProps {
 	socket: Socket | null;
 	enabled?: boolean;
+	className?: string;
 }
 
-export function DPad({ socket, enabled = true }: DPadProps) {
+export function DPad({ socket, enabled = true, className = "" }: DPadProps) {
 	useWASDController({ enabled });
 
 	const isDisabled = !enabled || !socket;
 
 	return (
-		<section className="rounded-xl border border-(--line) bg-black/20 p-6">
+		<section
+			className={`rounded-[28px] border border-(--line) bg-black/20 p-5 ${className}`}
+		>
 			<div className="mb-4 flex items-end justify-between">
 				<div>
 					<h2 className="text-xl font-semibold tracking-tight">Drive Pad</h2>
@@ -25,7 +28,7 @@ export function DPad({ socket, enabled = true }: DPadProps) {
 				</span>
 			</div>
 
-			<div className="mx-auto grid aspect-square w-full max-w-68 grid-cols-3 grid-rows-3 place-items-center gap-2">
+			<div className="mx-auto grid aspect-square w-full max-w-52 grid-cols-3 grid-rows-3 place-items-center gap-3">
 				<div />
 				<DPadButton
 					label="↑"
@@ -44,7 +47,7 @@ export function DPad({ socket, enabled = true }: DPadProps) {
 				/>
 				<button
 					type="button"
-					className="h-16 w-16 rounded-full border border-(--line) bg-white/8 text-lg font-semibold text-(--ink-0) transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+					className="h-14 w-14 rounded-full border border-(--line) bg-white/8 text-lg font-semibold text-(--ink-0) transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
 					aria-label="Stop"
 					disabled={isDisabled}
 					onClick={() => {
@@ -94,7 +97,7 @@ function DPadButton({
 			type="button"
 			aria-label={ariaLabel}
 			disabled={disabled}
-			className="h-16 w-16 rounded-xl border border-(--line) bg-white/8 text-2xl text-(--ink-0) font-semibold shadow-[0_8px_20px_rgba(2,8,18,0.2)] transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+			className="h-14 w-14 rounded-2xl border border-(--line) bg-white/8 text-2xl font-semibold text-(--ink-0) shadow-[0_8px_20px_rgba(2,8,18,0.2)] transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
 			onClick={() => {
 				if (!socket) {
 					return;

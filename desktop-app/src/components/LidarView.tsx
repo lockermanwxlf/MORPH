@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { SlamMap } from "@/robot/SlamMap";
+import { useSocket } from "@/utils/SocketContext";
 
 function randomMap(): SlamMap {
 	const width = 500;
@@ -14,6 +15,7 @@ function randomMap(): SlamMap {
 export const LidarView = () => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const imgDataRef = useRef<ImageData | null>(null);
+	const { socket } = useSocket();
 
 	// Get the subscribe function directly from the context, NOT a state variable
 
@@ -60,7 +62,7 @@ export const LidarView = () => {
 		return () => {
 			clearInterval(interval);
 		};
-	}, []);
+	}, [socket]);
 
 	return (
 		<canvas
