@@ -11,7 +11,7 @@ import TanStackQueryProvider from "../integrations/tanstack-query/root-provider"
 import { ConnectedDeviceProvider } from "../utils/ConnectedDeviceContext";
 import { SocketProvider } from "../utils/SocketContext";
 import "../styles.css";
-import { SlamMapProvider } from "@/robot/slam-map";
+import { SlamMapProvider } from "@/robot/SlamMap";
 
 interface MyRouterContext {
 	queryClient: QueryClient;

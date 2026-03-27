@@ -1,9 +1,10 @@
 import {
 	createContext,
 	type ReactNode,
+	useCallback,
 	useContext,
 	useEffect,
-	useRef,
+	useMemo,
 	useState,
 } from "react";
 import { useSocket } from "@/utils/SocketContext";
@@ -45,20 +46,19 @@ let interval: NodeJS.Timeout | null = null;
 export function SlamMapProvider({ children }: { children: ReactNode }) {
 	const { socket } = useSocket();
 
-	const contextValue = useRef<SlamMapContextValue>({
-		map,
-		subscribe: (callback: (map: SlamMap) => void) => {
+	const subscribe = useCallback(
+		(callback: (map: SlamMap) => void) => {
 			listeners.add(callback);
 			subscriberCount++;
 
 			// Set up socket listener only for the first subscriber
 			if (subscriberCount === 1 && socket) {
 				interval = setInterval(() => {
-					console.log("interval");
+					console.log("h");
 					listeners.forEach((list) => {
 						list(randomMap());
 					});
-				});
+				}, 100);
 				socketListener = (data: SlamMap) => {
 					map = data;
 					listeners.forEach((listener) => {
@@ -82,10 +82,19 @@ export function SlamMapProvider({ children }: { children: ReactNode }) {
 				}
 			};
 		},
-	});
+		[socket],
+	);
+
+	const contextValue = useMemo(
+		() => ({
+			map,
+			subscribe,
+		}),
+		[subscribe],
+	);
 
 	return (
-		<SlamMapContext.Provider value={contextValue.current}>
+		<SlamMapContext.Provider value={contextValue}>
 			{children}
 		</SlamMapContext.Provider>
 	);
@@ -105,7 +114,7 @@ export function useSlamMap() {
 		});
 
 		return unsubscribe;
-	}, [context]);
+	}, [context.subscribe]);
 
 	return mapState;
 }
