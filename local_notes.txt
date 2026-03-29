@@ -1,0 +1,56 @@
+To get rosbridge_suite working (on new setups):
+
+- sudo apt install python3-tornado
+- sudo apt install python3-pymongo
+
+To listen
+
+1. setup comm through foxglove
+ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+
+2. start a talker node
+ros2 run slu_smart talker
+
+3. to start controller
+ros2 launch waveshare_servos example.launch.py
+
+3a. to drive around with keyboard
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args   -r /cmd_vel:=/diff_drive_base/cmd_vel   -p stamped:=true   -p frame_id:=base_link
+
+4. to publish vel. command
+ros2 topic pub --once /joint_trajectory_velocity_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "{joint_names: ['joint1', 'joint2'],
+  points: [
+    {velocities: [5.0, 9.2], time_from_start: {sec: 1}},
+    {velocities: [0.5, 0.5], time_from_start: {sec: 9}},
+    {velocities: [0.0, 0.0], time_from_start: {sec: 10}}
+  ]}"
+ 
+ 5. to publish diff drive:
+ros2 topic pub -r 10 /diff_drive_base/cmd_vel geometry_msgs/TwistStamped \
+"{header: {frame_id: base_link}, twist: {linear: {x: 0.2}, angular: {z: 0.0}}}"
+
+6. to use LIDAR
+ros2 launch sllidar_ros2 view_sllidar_a1_launch.py \
+  serial_port:=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+
+#TODO, ROTATE AND POSITION THIS FRAME BASED ON WHAT FINAL POSITION IS
+ros2 run tf2_ros static_transform_publisher   0.0762 0.0 0.1651 3.14159 0.0 0.0   base_link laser
+
+7. to use SLAM
+ros2 launch slam_toolbox online_async_launch.py   slam_params_file:=/home/pascal/ros2_ws/config/slam_toolbox.yaml   use_sim_time:=false
+
+8. to use NAV2
+ros2 launch ~/ros2_ws/src/slu_smart/launch/nav2_launch.py
+
+#TODO
+- Unsure if I should use the odom from slam "/odom"
+or the odom from diff drive "/diff_drive_base/odom"
+- Globally, I should be doing my planning in the SLAM map and it's ODOM
+- Locally, I can use my /scan topic
+
+- Ensure correct global plugins
+- Ensure correct local plugins
+- Add the loca
+
+
+ # WRITE DOWN NOTES FOR PORT FORWARDING IN README! (AND SETTING UP USER!)
