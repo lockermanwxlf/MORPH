@@ -1,5 +1,13 @@
 # **MORPH**
+
 ## A learning robot kit.
+
+This repository contains:
+
+* [desktop-app](desktop-app), which contains the user-facing desktop app
+* [server](server), which contains the IPC process used by desktop-app to communicate with and discover robots
+* [web](web), which eventually will contain the hosted website for consultation, and can maybe also replace the desktop app? ([1](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API))
+
 
 ## Quickstart
 
