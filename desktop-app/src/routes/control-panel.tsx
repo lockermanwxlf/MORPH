@@ -173,9 +173,6 @@ function RouteComponent() {
 									</p>
 									<p className="mt-1 text-lg font-semibold text-(--ink-0)">
 										{robotStats.linearX.toFixed(3)}
-										<span className="ml-2 text-xs font-medium text-(--ink-1)">
-											m/s
-										</span>
 									</p>
 								</div>
 								<div className="rounded-2xl border border-(--line) bg-white/8 px-4 py-3">
@@ -184,9 +181,6 @@ function RouteComponent() {
 									</p>
 									<p className="mt-1 text-lg font-semibold text-(--ink-0)">
 										{robotStats.angularZ.toFixed(3)}
-										<span className="ml-2 text-xs font-medium text-(--ink-1)">
-											rad/s
-										</span>
 									</p>
 								</div>
 							</div>
