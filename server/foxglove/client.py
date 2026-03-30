@@ -1,6 +1,7 @@
 import json
 import struct
 import traceback
+from typing import Any
 from socketio import AsyncServer
 import websockets
 from websockets import ClientConnection, Subprotocol, State
@@ -37,13 +38,12 @@ class FoxgloveClient:
         if self.listener_sid:
             await self.sio.emit("log", {"message": msg}, to=self.listener_sid)
 
+    async def send_structured_log(self, topic: str, data: Any):
+        if self.listener_sid:
+            await self.sio.emit(topic, data, to=self.listener_sid)
+
     def _emit_ros_message(self, data):
         print("ROSDATA:", data)
-
-    async def _emit_map_data(self, data):
-        if not self.listener_sid:
-            return
-        await self.sio.emit("map_data", data, to=self.listener_sid)
 
     def set_listener_sid(self, sid: str | None):
         self.listener_sid = sid
@@ -118,7 +118,7 @@ class FoxgloveClient:
         frame = DiffDrive.make_command_frame(twist, self.channel_id, "base_link")
         await self.log(f"Sending diff drive command: {twist}")
         await self._ws.send(frame)
-        await self.log("Sent diff drive command")
+        await self.send_structured_log("diff_drive", twist.__dict__)
 
     async def _handle_messages(self) -> None:
         """
@@ -293,7 +293,7 @@ class FoxgloveClient:
                     )
                     return
 
-                await self._emit_map_data(grid_data)
+                await self.send_structured_log("map_data", grid_data)
                 await self.log(
                     f"→ [{actual_channel_id}] OccupancyGrid CDR: {grid_data['width']}x{grid_data['height']} "
                     f"(resolution={grid_data['resolution']}, data_len={grid_data['data_length']})"

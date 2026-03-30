@@ -15,11 +15,20 @@ interface LogLine {
 	variant: "default" | "alert";
 }
 
+interface DiffDriveTelemetry {
+	linear_x?: number;
+	angular_z?: number;
+}
+
 function RouteComponent() {
 	const navigate = useNavigate();
 	const { socket } = useSocket();
 	const [disconnected, setDisconnected] = useState(false);
 	const [logs, setLogs] = useState<LogLine[]>([]);
+	const [robotStats, setRobotStats] = useState({
+		linearX: 0,
+		angularZ: 0,
+	});
 
 	const isSocketConnected = socket?.connected ?? false;
 
@@ -60,12 +69,25 @@ function RouteComponent() {
 			]);
 		};
 
+		const handleDiffDrive = (payload: DiffDriveTelemetry) => {
+			setRobotStats((prev) => ({
+				linearX:
+					typeof payload?.linear_x === "number" ? payload.linear_x : prev.linearX,
+				angularZ:
+					typeof payload?.angular_z === "number"
+						? payload.angular_z
+						: prev.angularZ,
+			}));
+		};
+
 		socket.on("disconnect", handleDisconnect);
 		socket.on("log", handleLog);
+		socket.on("diff_drive", handleDiffDrive);
 
 		return () => {
 			socket.off("disconnect", handleDisconnect);
 			socket.off("log", handleLog);
+			socket.off("diff_drive", handleDiffDrive);
 		};
 	}, [socket]);
 
@@ -138,50 +160,83 @@ function RouteComponent() {
 						/>
 					</div>
 
-					<section className="flex min-h-0 flex-col rounded-[32px] border border-(--line) bg-black/20 p-5">
-						<div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-1)">
-							<span className="h-2.5 w-2.5 rounded-full bg-[#6fe58d]" />
-							System Log
-						</div>
-
-						<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-							{logs.length === 0 ? (
-								<div className="flex flex-1 items-center justify-center rounded-[28px] border border-dashed border-(--line) bg-white/4 px-6 text-center text-sm text-(--ink-1)">
-									Waiting for live robot logs...
+					<div className="flex min-h-0 max-h-[calc(100dvh-11rem)] flex-col gap-4">
+						<section className="rounded-[32px] border border-(--line) bg-black/20 p-5">
+							<div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-1)">
+								<span className="h-2.5 w-2.5 rounded-full bg-[#6fe58d]" />
+								Robot Stats
+							</div>
+							<div className="grid grid-cols-2 gap-3">
+								<div className="rounded-2xl border border-(--line) bg-white/8 px-4 py-3">
+									<p className="text-[11px] font-semibold uppercase tracking-wide text-(--ink-1)">
+										Linear X
+									</p>
+									<p className="mt-1 text-lg font-semibold text-(--ink-0)">
+										{robotStats.linearX.toFixed(3)}
+										<span className="ml-2 text-xs font-medium text-(--ink-1)">
+											m/s
+										</span>
+									</p>
 								</div>
-							) : (
-								logs.map((line) => (
-									<article
-										key={line.id}
-										className={`rounded-[24px] border px-4 py-3 shadow-[0_10px_24px_rgba(2,8,18,0.18)] ${
-											line.variant === "alert"
-												? "border-[rgba(232,93,93,0.25)] bg-[rgba(232,93,93,0.14)]"
-												: "border-(--line) bg-white/8"
-										}`}
-									>
-										<p
-											className={`text-[11px] font-semibold uppercase tracking-wide ${
+								<div className="rounded-2xl border border-(--line) bg-white/8 px-4 py-3">
+									<p className="text-[11px] font-semibold uppercase tracking-wide text-(--ink-1)">
+										Angular Z
+									</p>
+									<p className="mt-1 text-lg font-semibold text-(--ink-0)">
+										{robotStats.angularZ.toFixed(3)}
+										<span className="ml-2 text-xs font-medium text-(--ink-1)">
+											rad/s
+										</span>
+									</p>
+								</div>
+							</div>
+						</section>
+
+						<section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-(--line) bg-black/20 p-5">
+							<div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-1)">
+								<span className="h-2.5 w-2.5 rounded-full bg-[#6fe58d]" />
+								System Log
+							</div>
+
+							<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+								{logs.length === 0 ? (
+									<div className="flex flex-1 items-center justify-center rounded-[28px] border border-dashed border-(--line) bg-white/4 px-6 text-center text-sm text-(--ink-1)">
+										Waiting for live robot logs...
+									</div>
+								) : (
+									logs.map((line) => (
+										<article
+											key={line.id}
+											className={`rounded-[24px] border px-4 py-3 shadow-[0_10px_24px_rgba(2,8,18,0.18)] ${
 												line.variant === "alert"
-													? "text-[#ff8c8c]"
-													: "text-(--ink-1)"
+													? "border-[rgba(232,93,93,0.25)] bg-[rgba(232,93,93,0.14)]"
+													: "border-(--line) bg-white/8"
 											}`}
 										>
-											{line.timestamp}
-										</p>
-										<p
-											className={`mt-1 text-sm font-medium ${
-												line.variant === "alert"
-													? "text-[#ffd5d5]"
-													: "text-(--ink-0)"
-											}`}
-										>
-											{line.message}
-										</p>
-									</article>
-								))
-							)}
-						</div>
-					</section>
+											<p
+												className={`text-[11px] font-semibold uppercase tracking-wide ${
+													line.variant === "alert"
+														? "text-[#ff8c8c]"
+														: "text-(--ink-1)"
+												}`}
+											>
+												{line.timestamp}
+											</p>
+											<p
+												className={`mt-1 text-sm font-medium ${
+													line.variant === "alert"
+														? "text-[#ffd5d5]"
+														: "text-(--ink-0)"
+												}`}
+											>
+												{line.message}
+											</p>
+										</article>
+									))
+								)}
+							</div>
+						</section>
+					</div>
 				</div>
 			</section>
 		</div>
