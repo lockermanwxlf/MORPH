@@ -1,45 +1,36 @@
-# **MORPH**
-
-## A learning robot kit.
-
-This repository contains:
-
-* [desktop-app](desktop-app), which contains the user-facing desktop app
-* [server](server), which contains the IPC process used by desktop-app to communicate with and discover robots
-* [web](web), which eventually will contain the hosted website for consultation, and can maybe also replace the desktop app? ([1](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API))
-
-
-## Quickstart
-
-```{bash}
-git clone https://github.com/oss-slu/MORPH
-```
-
-### Installing dependencies
-
+# MORPH
+A modular open-source robotic programming hub.
+## Overview
+MORPH consists of:
+- `web/`: React + TanStack Start frontend (runs on port `3000`)
+- `server/`: FastAPI + Socket.IO backend (runs on port `8000`)
+- `ros2_ws/`: ROS 2 workspace and robot-side packages
+The frontend proxies `/api/*` and `/socket.io/*` to the backend.
+## Prerequisites
+- Node.js 18+ (or latest LTS)
+- `pnpm` (`npm i -g pnpm`)
+- Python 3.11+ (recommended)
+## Quick Start (Local Development)
+### 1) Start backend
 ```bash
 cd server
-uv sync
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+# macOS/Linux
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e .
+uvicorn main:app --reload --port 8000
 ```
 
+### 2) Start frontend (new terminal)
 ```bash
-cd desktop-app
+cd web
 pnpm install
-```
-
-```bash
-cd desktop-app/bt-scanner
-uv sync
-```
-
-### Running dev build
-
-```bash
-cd desktop-app
 pnpm dev
 ```
-
-Robots are detected through BLE advertisements and mDNS service discovery. Both are handled in [robot/gatt-server.py](robot/gatt-server.py)
+Open: http://localhost:3000
 
 > ROS 2 builds are only needed if you plan to run the robot stack locally. For UI-only testing, the steps above are sufficient.
 
