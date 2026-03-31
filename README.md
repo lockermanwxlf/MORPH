@@ -1,36 +1,45 @@
 # **MORPH**
+
 ## A learning robot kit.
 
-## Quick Start (Desktop App Only)
-1. **Clone the repo and move into the desktop app**
-   ```bash
-   git clone https://github.com/oss-slu/MORPH.git
-   cd MORPH/desktop
-   ```
+This repository contains:
 
-2. **Create and activate a Python virtual environment**
-   ```bash
-   python -m venv .venv
-   # macOS/Linux
-   source .venv/bin/activate
-   # Windows PowerShell
-   .\.venv\Scripts\Activate.ps1
-   ```
+* [desktop-app](desktop-app), which contains the user-facing desktop app
+* [server](server), which contains the IPC process used by desktop-app to communicate with and discover robots
+* [web](web), which eventually will contain the hosted website for consultation, and can maybe also replace the desktop app? ([1](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API))
 
-3. **Install the dependencies**
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
 
-4. **Run the Socket.IO-enabled Flask server**
-   ```bash
-   python app.py
-   ```
+## Quickstart
 
-5. **Connect to your robot (optional)**
-   - In the dashboard’s “Connection” card, keep the default IP or type your robot’s IP.
-   - Click **Connect**. Once the status badge flips to “Connected” you can drive, monitor telemetry, and view logs.
+```{bash}
+git clone https://github.com/oss-slu/MORPH
+```
+
+### Installing dependencies
+
+```bash
+cd server
+uv sync
+```
+
+```bash
+cd desktop-app
+pnpm install
+```
+
+```bash
+cd desktop-app/bt-scanner
+uv sync
+```
+
+### Running dev build
+
+```bash
+cd desktop-app
+pnpm dev
+```
+
+Robots are detected through BLE advertisements and mDNS service discovery. Both are handled in [robot/gatt-server.py](robot/gatt-server.py)
 
 > ROS 2 builds are only needed if you plan to run the robot stack locally. For UI-only testing, the steps above are sufficient.
 
