@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* Theme tokens (light defaults) */
+:root {
+  color-scheme: light;
+
+  /* Core semantic tokens */
+  --bg-0: #f7fafc;
+  --bg-1: #e8eef5;
+  --ink-0: #0f172a;
+  --ink-1: #4b5f79;
+  --line: #c3d1e4;
+  --brand: #008f86;
+  --brand-soft: #b8ece8;
+  --surface: rgba(255, 255, 255, 0.78);
+
+  /* Extended tokens for consistency */
+  --surface-strong: rgba(255, 255, 255, 0.9);
+  --shadow-0: rgba(15, 23, 42, 0.12);
+  --focus-ring: rgba(0, 143, 134, 0.3);
+  --bg-ambient-a: rgba(0, 143, 134, 0.16);
+  --bg-ambient-b: rgba(79, 70, 229, 0.12);
+}
+
+/* Auto dark mode (OLED-oriented) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg-0: #070b12;
+    --bg-1: #0f1725;
+    --ink-0: #e8eef9;
+    --ink-1: #99a8bf;
+    --line: #25344c;
+    --brand: #24c7b8;
+    --brand-soft: #1a6f88;
+    --surface: rgba(3, 7, 14, 0.82);
+
+    --surface-strong: rgba(5, 10, 18, 0.92);
+    --shadow-0: rgba(0, 0, 0, 0.68);
+    --focus-ring: rgba(37, 210, 194, 0.42);
+    --bg-ambient-a: rgba(37, 210, 194, 0.14);
+    --bg-ambient-b: rgba(34, 73, 126, 0.2);
+  }
+}
+
+/* Optional explicit theme overrides */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-0: #000000;
+  --bg-1: #020409;
+  --ink-0: #edf5ff;
+  --ink-1: #92a6c5;
+  --line: #1d2737;
+  --brand: #25d2c2;
+  --brand-soft: #12404f;
+  --surface: rgba(3, 7, 14, 0.82);
+  --surface-strong: rgba(5, 10, 18, 0.92);
+  --shadow-0: rgba(0, 0, 0, 0.68);
+  --focus-ring: rgba(37, 210, 194, 0.42);
+  --bg-ambient-a: rgba(37, 210, 194, 0.14);
+  --bg-ambient-b: rgba(34, 73, 126, 0.2);
+}
+
+body {
+  @apply m-0 min-h-dvh;
+  font-family: "Sora", "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink-0);
+  background:
+    radial-gradient(900px 500px at 15% -5%, rgba(36, 199, 184, 0.17), transparent 60%),
+    radial-gradient(800px 480px at 90% 0%, rgba(26, 111, 136, 0.22), transparent 62%),
+    linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
