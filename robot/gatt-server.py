@@ -48,6 +48,54 @@ WIFI_CHAR_PATH = "/com/morph/app/service0/char1"
 # ssid request
 WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd"
 WIFI_STATUS_CHAR_PATH = "/com/morph/app/service0/char2"
+PRIVATE_IP_CHAR_UUID = "2b6a9f48-4f8f-4f9f-9fd5-8e04b7d1c0f4"
+PRIVATE_IP_CHAR_PATH = "/com/morph/app/service0/char3"
+
+
+async def _get_current_network_details() -> tuple[str, str]:
+    ssid = ""
+    private_ip = ""
+
+    try:
+        wifi_proc = await asyncio.create_subprocess_exec(
+            "nmcli",
+            "-t",
+            "-f",
+            "active,ssid",
+            "device",
+            "wifi",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        wifi_stdout, _ = await wifi_proc.communicate()
+
+        if wifi_proc.returncode == 0:
+            lines = wifi_stdout.decode().strip().splitlines()
+            ssid = next((line[4:] for line in lines if line.startswith("yes:")), "")
+    except Exception as e:
+        print(f"Error fetching current WiFi SSID: {e}")
+
+    try:
+        ip_proc = await asyncio.create_subprocess_exec(
+            "nmcli",
+            "-t",
+            "-g",
+            "IP4.ADDRESS",
+            "connection",
+            "show",
+            "--active",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        ip_stdout, _ = await ip_proc.communicate()
+
+        if ip_proc.returncode == 0:
+            ip_lines = [line.strip() for line in ip_stdout.decode().splitlines() if line.strip()]
+            private_ip = next((line.split("/", 1)[0] for line in ip_lines if "." in line), "")
+    except Exception as e:
+        print(f"Error fetching current private IP: {e}")
+
+    return ssid, private_ip
 
 
 class WifiStatusCharacteristic(ServiceInterface):
@@ -70,30 +118,41 @@ class WifiStatusCharacteristic(ServiceInterface):
 
     async def update_cached_value(self) -> None:
         if self.cached_network_state != network_state_counter:
-            ssid = ""
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    "nmcli",
-                    "-t",
-                    "-f",
-                    "active,ssid",
-                    "device",
-                    "wifi",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, _ = await proc.communicate()
-
-                if proc.returncode == 0:
-                    lines = stdout.decode().strip().splitlines()
-                    ssid = next(
-                        (line[4:] for line in lines if line.startswith("yes:")), ""
-                    )
-            except Exception as e:
-                print(f"Error fetching current WiFi SSID: {e}")
+            ssid, _private_ip = await _get_current_network_details()
             self.cached_network_state = network_state_counter
             self.cached_payload = json.dumps(
                 {"ssid": ssid, "st": network_state_counter}
+            ).encode("utf-8")
+
+    @method()
+    async def ReadValue(self, _options: "a{sv}") -> "ay":
+        return self.cached_payload
+
+
+class PrivateIpCharacteristic(ServiceInterface):
+    def __init__(self) -> None:
+        super().__init__("org.bluez.GattCharacteristic1")
+        self.cached_network_state = None
+        self.cached_payload = b""
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Service(self) -> "o":
+        return SERVICE_PATH
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return PRIVATE_IP_CHAR_UUID
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Flags(self) -> "as":
+        return ["read"]
+
+    async def update_cached_value(self) -> None:
+        if self.cached_network_state != network_state_counter:
+            _ssid, private_ip = await _get_current_network_details()
+            self.cached_network_state = network_state_counter
+            self.cached_payload = json.dumps(
+                {"private_ip": private_ip, "st": network_state_counter}
             ).encode("utf-8")
 
     @method()
@@ -259,6 +318,13 @@ class Application(ServiceInterface):
                     "Flags": Variant("as", ["read"]),
                 }
             },
+            PRIVATE_IP_CHAR_PATH: {
+                "org.bluez.GattCharacteristic1": {
+                    "Service": Variant("o", SERVICE_PATH),
+                    "UUID": Variant("s", PRIVATE_IP_CHAR_UUID),
+                    "Flags": Variant("as", ["read"]),
+                }
+            },
         }
 
 
@@ -379,10 +445,12 @@ async def main() -> None:
     wifi_ch = WifiProvisioningCharacteristic()
     adv = Advertisement(device_id)
     wifi_status_ch = WifiStatusCharacteristic()
+    private_ip_ch = PrivateIpCharacteristic()
 
     # Fetch initial wifi state
     print("Fetching initial WiFi state...", flush=True)
     await wifi_status_ch.update_cached_value()
+    await private_ip_ch.update_cached_value()
     await _restart_avahi(device_id)
 
     bus.export(APP_PATH, app)
@@ -391,6 +459,7 @@ async def main() -> None:
     bus.export(WIFI_CHAR_PATH, wifi_ch)
     bus.export(ADV_PATH, adv)
     bus.export(WIFI_STATUS_CHAR_PATH, wifi_status_ch)
+    bus.export(PRIVATE_IP_CHAR_PATH, private_ip_ch)
 
     adapter_intro = await bus.introspect(BLUEZ_SERVICE, adapter_path)
     adapter_obj = bus.get_proxy_object(BLUEZ_SERVICE, adapter_path, adapter_intro)
@@ -414,6 +483,7 @@ async def main() -> None:
                     global network_state_counter
                     network_state_counter += 1
                     await wifi_status_ch.update_cached_value()
+                    await private_ip_ch.update_cached_value()
                     await _restart_avahi(device_id)
                     if "PrimaryConnection" in changed_properties:
                         adv.emit_properties_changed(
@@ -451,6 +521,7 @@ async def main() -> None:
     bus.unexport(ADV_PATH)
     bus.unexport(WIFI_CHAR_PATH)
     bus.unexport(WIFI_STATUS_CHAR_PATH)
+    bus.unexport(PRIVATE_IP_CHAR_PATH)
     bus.unexport(CHAR_PATH)
     bus.unexport(SERVICE_PATH)
     bus.unexport(APP_PATH)

@@ -1,0 +1,292 @@
+<script lang="ts">
+	type BrowserBluetoothDevice = {
+		id: string;
+		name?: string | null;
+	};
+
+	type BrowserBluetooth = {
+		requestDevice(options: {
+			filters?: Array<{ services?: Array<string | number> }>;
+			optionalServices?: Array<string | number>;
+		}): Promise<BrowserBluetoothDevice>;
+	};
+
+	type ScannedDevice = {
+		id: string;
+		name: string;
+		addressLabel: string;
+	};
+
+	const FE99_SERVICE = 0xfe99;
+
+	let host = $state("");
+	let isBluetoothAvailable = $state(false);
+	let isScanning = $state(false);
+	let scanError = $state("");
+	let pairedDevice = $state<ScannedDevice | null>(null);
+	let isWifiDialogOpen = $state(false);
+	let ssid = $state("");
+	let password = $state("");
+
+	function toDeviceRecord(device: BrowserBluetoothDevice): ScannedDevice {
+		return {
+			id: device.id,
+			name: device.name?.trim() || "Unnamed device",
+			// Browsers intentionally hide BLE MAC addresses, so we surface the stable device id instead.
+			addressLabel: device.id,
+		};
+	}
+
+	async function scanForDevices() {
+		scanError = "";
+
+		if (!isBluetoothAvailable) {
+			scanError = "Bluetooth is not available in this browser.";
+			return;
+		}
+
+		isScanning = true;
+
+		try {
+			const bluetooth = (
+				navigator as Navigator & { bluetooth?: BrowserBluetooth }
+			).bluetooth;
+
+			if (!bluetooth) {
+				scanError = "Bluetooth is not available in this browser.";
+				return;
+			}
+
+			const device = await bluetooth.requestDevice({
+				filters: [{ services: [FE99_SERVICE] }],
+				optionalServices: [FE99_SERVICE],
+			});
+
+			pairedDevice = toDeviceRecord(device);
+		} catch (error) {
+			if (
+				error instanceof DOMException &&
+				error.name === "NotFoundError"
+			) {
+				scanError = "No device was selected.";
+			} else {
+				console.error(error);
+				scanError =
+					"Bluetooth scan failed. Check permissions and try again.";
+			}
+		} finally {
+			isScanning = false;
+		}
+	}
+
+	$effect(() => {
+		isBluetoothAvailable =
+			typeof navigator !== "undefined" &&
+			typeof window !== "undefined" &&
+			window.isSecureContext &&
+			"bluetooth" in navigator;
+	});
+</script>
+
+<svelte:head>
+	<title>Control Hub | MORPH</title>
+	<meta
+		name="description"
+		content="Connect to a MORPH device from the Control Hub."
+	/>
+</svelte:head>
+
+<div
+	class="flex min-h-dvh items-center justify-center px-6 py-6 sm:px-10 sm:py-8 lg:px-16 lg:py-10"
+>
+	<section
+		class="flex min-h-[70vh] w-full max-w-[42rem] flex-col rounded-4xl border p-6 sm:p-8 lg:p-10"
+		style:border-color="var(--border-soft)"
+		style:background="var(--surface-solid)"
+	>
+		<div>
+			<h1 class="text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+				Connect to a device to get started
+			</h1>
+
+			<label class="mt-8 block">
+				<span
+					class="mb-3 block text-sm font-medium"
+					style:color="var(--muted-text)"
+				>
+					IP Address:
+				</span>
+				<input
+					bind:value={host}
+					type="text"
+					placeholder="192.168.x.x, 192.168.x.x:xxxx"
+					class="w-full rounded-2xl border px-4 py-3 text-base outline-none"
+					style:border-color="var(--border-soft)"
+					style:background="var(--surface-soft)"
+					style:color="var(--page-text)"
+				/>
+			</label>
+			{#if isBluetoothAvailable}
+				{#if pairedDevice}
+					<div
+						class="mt-6 rounded-2xl border px-4 py-4"
+						style:border-color="var(--border-soft)"
+						style:background="var(--surface-soft)"
+					>
+						<div class="flex items-start justify-between gap-4">
+							<div>
+								<div class="text-sm font-medium">
+									{pairedDevice.name}
+								</div>
+								<div
+									class="mt-1 text-sm"
+									style:color="var(--muted-text)"
+								>
+									Device ID: {pairedDevice.addressLabel}
+								</div>
+							</div>
+							<button
+								type="button"
+								class="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold"
+								style:background="rgba(239, 68, 68, 0.14)"
+								style:color="#dc2626"
+								aria-label="Unpair device"
+								onclick={() => {
+									pairedDevice = null;
+									isWifiDialogOpen = false;
+									scanError = "";
+								}}
+							>
+								X
+							</button>
+						</div>
+						<button
+							type="button"
+							class="mt-4 inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
+							style:background="var(--accent-soft)"
+							style:color="var(--accent)"
+							onclick={() => {
+								isWifiDialogOpen = true;
+							}}
+						>
+							Set Device WiFi
+						</button>
+					</div>
+				{:else}
+					<button
+						type="button"
+						onclick={scanForDevices}
+						class="mt-6 inline-flex rounded-2xl px-5 py-4 text-base font-semibold transition"
+						style:background="var(--accent)"
+						style:color="var(--page-bg)"
+						disabled={isScanning}
+					>
+						{isScanning ? "Connecting..." : "Connect by Bluetooth"}
+					</button>
+				{/if}
+			{:else}
+				<p
+					class="mt-6 max-w-xl text-sm leading-6"
+					style:color="var(--muted-text)"
+				>
+					If you don't know the IP of your device, you can use a
+					browser with Bluetooth support like Chrome, Edge, or Opera
+					to connect automatically.
+				</p>
+			{/if}
+
+			{#if scanError}
+				<p class="mt-4 text-sm text-red-500">{scanError}</p>
+			{/if}
+		</div>
+
+		<div class="mt-8 flex justify-end">
+			<button
+				type="button"
+				class="rounded-full px-6 py-3 text-sm font-semibold transition"
+				style:background="var(--accent)"
+				style:color="var(--page-bg)"
+			>
+				Connect
+			</button>
+		</div>
+	</section>
+</div>
+
+{#if isWifiDialogOpen}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center px-6 py-6"
+		style:background="rgba(15, 23, 42, 0.45)"
+	>
+		<div
+			class="w-full max-w-md rounded-4xl border p-6 sm:p-8"
+			style:border-color="var(--border-soft)"
+			style:background="var(--surface-solid)"
+		>
+			<div>
+				<h2 class="text-2xl font-semibold">Set Device WiFi</h2>
+				<p
+					class="mt-2 text-sm leading-6"
+					style:color="var(--muted-text)"
+				>
+					Enter the network details you want the device to use.
+				</p>
+			</div>
+
+			<label class="mt-6 block">
+				<span
+					class="mb-3 block text-sm font-medium"
+					style:color="var(--muted-text)"
+				>
+					SSID (Network Name)
+				</span>
+				<input
+					bind:value={ssid}
+					type="text"
+					class="w-full rounded-2xl border px-4 py-3 text-base outline-none"
+					style:border-color="var(--border-soft)"
+					style:background="var(--surface-soft)"
+					style:color="var(--page-text)"
+				/>
+			</label>
+
+			<label class="mt-5 block">
+				<span
+					class="mb-3 block text-sm font-medium"
+					style:color="var(--muted-text)"
+				>
+					Password
+				</span>
+				<input
+					bind:value={password}
+					type="password"
+					class="w-full rounded-2xl border px-4 py-3 text-base outline-none"
+					style:border-color="var(--border-soft)"
+					style:background="var(--surface-soft)"
+					style:color="var(--page-text)"
+				/>
+			</label>
+
+			<div class="mt-6 flex justify-end gap-3">
+				<button
+					type="button"
+					class="rounded-2xl px-4 py-3 text-sm font-medium"
+					style:background="var(--surface-soft)"
+					onclick={() => {
+						isWifiDialogOpen = false;
+					}}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="rounded-2xl px-4 py-3 text-sm font-semibold"
+					style:background="var(--accent)"
+					style:color="var(--page-bg)"
+				>
+					Save WiFi
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
