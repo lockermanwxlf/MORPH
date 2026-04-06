@@ -18,17 +18,69 @@ interface AdvertiseMessage extends StringMessage {
 	channels: Channel[];
 }
 
+interface StatusMessage extends StringMessage {
+	op: "status";
+	level?: string;
+	message?: string;
+}
+
 const TOPICS_TO_SUBSCRIBE = ["/map"];
+
+function toFoxgloveWebSocketUrl(host: string): string {
+	if (host.startsWith("ws://") || host.startsWith("wss://")) {
+		return host;
+	}
+
+	if (host.startsWith("http://") || host.startsWith("https://")) {
+		const url = new URL(host);
+		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+		return url.toString();
+	}
+
+	if (host.includes(":")) {
+		return `ws://${host}`;
+	}
+
+	return `ws://${host}:8765`;
+}
 
 export class FoxgloveClient {
 	host: string;
-	socket: WebSocket;
+	socket: WebSocket | null;
 	channelInfo: Map<number, Channel>;
 	subscribedTopics: Map<number, string>;
 	subscriptionIdToChannelId: Map<number, number>;
+	onOpen?: () => void;
+	onClose?: (event: CloseEvent) => void;
+	onError?: (event: Event) => void;
+	onStatus?: (status: StatusMessage) => void;
+	onChannelsChanged?: (topics: string[]) => void;
+
 	constructor(host: string) {
 		this.host = host;
-		this.socket = new WebSocket(`ws://${host}:8765`, "foxglove.sdk.v1");
+		this.socket = null;
+		this.channelInfo = new Map();
+		this.subscribedTopics = new Map<number, string>();
+		this.subscriptionIdToChannelId = new Map<number, number>();
+	}
+
+	connect(): Promise<void> {
+		if (
+			this.socket &&
+			(this.socket.readyState === WebSocket.OPEN ||
+				this.socket.readyState === WebSocket.CONNECTING)
+		) {
+			return Promise.resolve();
+		}
+
+		this.channelInfo.clear();
+		this.subscribedTopics.clear();
+		this.subscriptionIdToChannelId.clear();
+
+		this.socket = new WebSocket(
+			toFoxgloveWebSocketUrl(this.host),
+			"foxglove.sdk.v1",
+		);
 		this.socket.binaryType = "arraybuffer";
 		this.socket.onmessage = async (event) => {
 			if (typeof event.data === "string") {
@@ -37,12 +89,33 @@ export class FoxgloveClient {
 				await this.handleBinaryMessage(event.data);
 			}
 		};
-		this.channelInfo = new Map();
-		this.subscribedTopics = new Map<number, string>();
-		this.subscriptionIdToChannelId = new Map<number, number>();
+
+		return new Promise((resolve, reject) => {
+			if (!this.socket) {
+				reject(new Error("Socket was not created."));
+				return;
+			}
+
+			this.socket.onopen = () => {
+				this.onOpen?.();
+				resolve();
+			};
+			this.socket.onerror = (event) => {
+				this.onError?.(event);
+				reject(new Error(`Failed to connect to ${this.host}`));
+			};
+			this.socket.onclose = (event) => {
+				this.onClose?.(event);
+			};
+		});
 	}
 
-	subcriptionToChannel(
+	disconnect() {
+		this.socket?.close();
+		this.socket = null;
+	}
+
+	subscribeToChannel(
 		channelId: number,
 		topic: string,
 		encoding: "json" | "cdr",
@@ -59,7 +132,7 @@ export class FoxgloveClient {
 				},
 			],
 		};
-		this.socket.send(JSON.stringify(msg));
+		this.socket?.send(JSON.stringify(msg));
 		this.subscribedTopics.set(subcriptionId, topic);
 		this.subscriptionIdToChannelId.set(subcriptionId, channelId);
 	}
@@ -70,7 +143,7 @@ export class FoxgloveClient {
 		frameId: string,
 	) {
 		const frame = twistStampedFrame(twistStamped, channelId, frameId);
-		this.socket.send(frame);
+		this.socket?.send(frame);
 	}
 
 	private async handleStringMessage(message: string) {
@@ -81,13 +154,22 @@ export class FoxgloveClient {
 				for (const channel of advertisement.channels) {
 					this.channelInfo.set(channel.id, channel);
 					if (TOPICS_TO_SUBSCRIBE.includes(channel.topic)) {
-						this.subcriptionToChannel(
+						this.subscribeToChannel(
 							channel.id,
 							channel.topic,
 							channel.encoding,
 						);
 					}
 				}
+				this.onChannelsChanged?.(
+					Array.from(this.channelInfo.values())
+						.map((channel) => channel.topic)
+						.sort(),
+				);
+				break;
+			}
+			case "status": {
+				this.onStatus?.(data as StatusMessage);
 				break;
 			}
 			default: {

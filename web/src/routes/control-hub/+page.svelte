@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { goto } from "$app/navigation";
 	import { cubicOut } from "svelte/easing";
 	import type { TransitionConfig } from "svelte/transition";
+	import { robotConnection } from "$lib/robot-connection.svelte";
 
 	const WIFI_PROVISIONING_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3";
 	const NETWORK_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd";
@@ -42,6 +44,7 @@
 	let isBluetoothAvailable = $state(false);
 	let isScanning = $state(false);
 	let scanError = $state("");
+	let isConnecting = $state(false);
 	let selectedBluetoothDevice = $state<BrowserBluetoothDevice | null>(null);
 	let pairedDevice = $state<ScannedDevice | null>(null);
 	let isWifiDialogOpen = $state(false);
@@ -230,6 +233,18 @@
 		}
 	}
 
+	async function connectToRobot() {
+		isConnecting = true;
+		try {
+			const connected = await robotConnection.connect(host);
+			if (connected) {
+				await goto("/control-hub/live");
+			}
+		} finally {
+			isConnecting = false;
+		}
+	}
+
 	$effect(() => {
 		isBluetoothAvailable =
 			typeof navigator !== "undefined" &&
@@ -260,125 +275,149 @@
 				Connect to a device to get started
 			</h1>
 
-			<label class="mt-8 block">
-				<span
-					class="mb-3 block text-sm font-medium"
-					style:color="var(--muted-text)"
-				>
-					IP Address:
-				</span>
-				<input
-					bind:value={host}
-					type="text"
-					placeholder="192.168.x.x, 192.168.x.x:xxxx"
-					class="w-full rounded-2xl border px-4 py-3 text-base outline-none"
-					style:border-color="var(--border-soft)"
-					style:background="var(--surface-soft)"
-					style:color="var(--page-text)"
-				/>
-			</label>
-			{#if isBluetoothAvailable}
-				{#if pairedDevice}
-					<div
-						class="mt-6 rounded-2xl border px-4 py-4"
+			<form
+				class="mt-8"
+				onsubmit={(event) => {
+					event.preventDefault();
+					void connectToRobot();
+				}}
+			>
+				<label class="block">
+					<span
+						class="mb-3 block text-sm font-medium"
+						style:color="var(--muted-text)"
+					>
+						IP Address:
+					</span>
+					<input
+						bind:value={host}
+						type="text"
+						placeholder="192.168.x.x, 192.168.x.x:xxxx"
+						class="w-full rounded-2xl border px-4 py-3 text-base outline-none"
 						style:border-color="var(--border-soft)"
 						style:background="var(--surface-soft)"
-					>
-						<div class="flex items-start justify-between gap-4">
-							<div>
-								<div class="text-sm font-medium">
-									{pairedDevice.name}
+						style:color="var(--page-text)"
+					/>
+				</label>
+
+				{#if isBluetoothAvailable}
+					{#if pairedDevice}
+						<div
+							class="mt-6 rounded-2xl border px-4 py-4"
+							style:border-color="var(--border-soft)"
+							style:background="var(--surface-soft)"
+						>
+							<div class="flex items-start justify-between gap-4">
+								<div>
+									<div class="text-sm font-medium">
+										{pairedDevice.name}
+									</div>
+									<div
+										class="mt-1 text-sm"
+										style:color="var(--muted-text)"
+									>
+										Device ID: {pairedDevice.addressLabel}
+									</div>
+									<div
+										class="mt-1 text-sm"
+										style:color="var(--muted-text)"
+									>
+										SSID:
+										{pairedDevice.ssid || "Not connected"}
+									</div>
+									<div
+										class="mt-1 text-sm"
+										style:color="var(--muted-text)"
+									>
+										Private IP:
+										{pairedDevice.privateIp || "Unavailable"}
+									</div>
 								</div>
-								<div
-									class="mt-1 text-sm"
-									style:color="var(--muted-text)"
+								<button
+									type="button"
+									class="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold"
+									style:background="rgba(239, 68, 68, 0.14)"
+									style:color="#dc2626"
+									aria-label="Unpair device"
+									onclick={() => {
+										selectedBluetoothDevice = null;
+										pairedDevice = null;
+										isWifiDialogOpen = false;
+										scanError = "";
+										wifiError = "";
+									}}
 								>
-									Device ID: {pairedDevice.addressLabel}
-								</div>
-								<div
-									class="mt-1 text-sm"
-									style:color="var(--muted-text)"
-								>
-									SSID:
-									{pairedDevice.ssid || "Not connected"}
-								</div>
-								<div
-									class="mt-1 text-sm"
-									style:color="var(--muted-text)"
-								>
-									Private IP:
-									{pairedDevice.privateIp || "Unavailable"}
-								</div>
+									X
+								</button>
 							</div>
 							<button
 								type="button"
-								class="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold"
-								style:background="rgba(239, 68, 68, 0.14)"
-								style:color="#dc2626"
-								aria-label="Unpair device"
+								class="mt-4 inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
+								style:background="var(--accent-soft)"
+								style:color="var(--accent)"
 								onclick={() => {
-									selectedBluetoothDevice = null;
-									pairedDevice = null;
-									isWifiDialogOpen = false;
-									scanError = "";
 									wifiError = "";
+									ssid = pairedDevice?.ssid ?? "";
+									password = "";
+									isWifiDialogOpen = true;
 								}}
 							>
-								X
+								Set Device WiFi
 							</button>
 						</div>
+					{:else}
 						<button
 							type="button"
-							class="mt-4 inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
-							style:background="var(--accent-soft)"
-							style:color="var(--accent)"
-							onclick={() => {
-								wifiError = "";
-								ssid = pairedDevice?.ssid ?? "";
-								password = "";
-								isWifiDialogOpen = true;
-							}}
+							onclick={scanForDevices}
+							class="mt-6 inline-flex rounded-2xl px-5 py-4 text-base font-semibold transition"
+							style:background="var(--accent)"
+							style:color="var(--page-bg)"
+							disabled={isScanning}
 						>
-							Set Device WiFi
+							{isScanning ? "Connecting..." : "Connect by Bluetooth"}
 						</button>
-					</div>
+					{/if}
 				{:else}
+					<p
+						class="mt-6 max-w-xl text-sm leading-6"
+						style:color="var(--muted-text)"
+					>
+						If you don't know the IP of your device, you can use a
+						browser with Bluetooth support like Chrome, Edge, or Opera
+						to connect automatically.
+					</p>
+				{/if}
+
+				{#if scanError}
+					<p class="mt-4 text-sm text-red-500">{scanError}</p>
+				{/if}
+
+				{#if robotConnection.error}
+					<p class="mt-4 text-sm text-red-500">{robotConnection.error}</p>
+				{/if}
+
+				{#if robotConnection.status === "connected"}
+					<p class="mt-4 text-sm" style:color="var(--muted-text)">
+						Connected to {robotConnection.lastConnectedHost}
+					</p>
+				{/if}
+
+				<div class="mt-8 flex justify-end">
 					<button
-						type="button"
-						onclick={scanForDevices}
-						class="mt-6 inline-flex rounded-2xl px-5 py-4 text-base font-semibold transition"
+						type="submit"
+						class="rounded-full px-6 py-3 text-sm font-semibold transition"
 						style:background="var(--accent)"
 						style:color="var(--page-bg)"
-						disabled={isScanning}
+						disabled={isConnecting || robotConnection.status === "connecting"}
 					>
-						{isScanning ? "Connecting..." : "Connect by Bluetooth"}
+						{isConnecting || robotConnection.status === "connecting"
+							? "Connecting..."
+							: robotConnection.status === "connected"
+								? "Reconnect"
+								: "Connect"}
 					</button>
-				{/if}
-			{:else}
-				<p
-					class="mt-6 max-w-xl text-sm leading-6"
-					style:color="var(--muted-text)"
-				>
-					If you don't know the IP of your device, you can use a
-					browser with Bluetooth support like Chrome, Edge, or Opera
-					to connect automatically.
-				</p>
-			{/if}
-
-			{#if scanError}
-				<p class="mt-4 text-sm text-red-500">{scanError}</p>
-			{/if}
-		</div>
-
-		<div class="mt-8 flex justify-end">
-			<button
-				type="button"
-				class="rounded-full px-6 py-3 text-sm font-semibold transition"
-				style:background="var(--accent)"
-				style:color="var(--page-bg)"
-			>
-				Connect
-			</button>
+				</div>
+			</form>
 		</div>
 	</section>
 </div>

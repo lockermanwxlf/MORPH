@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-foxglove-bridge \
     ros-jazzy-nav2-bringup \
     ros-jazzy-robot-state-publisher \
+    ros-jazzy-rmw-cyclonedds-cpp \
     ros-jazzy-slam-toolbox \
     ros-jazzy-tf2-ros \
     ros-jazzy-xacro \
