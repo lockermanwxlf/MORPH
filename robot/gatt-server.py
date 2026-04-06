@@ -2,7 +2,6 @@
 """BlueZ GATT service + LE advertisement for Debian/Linux."""
 
 import asyncio
-import json
 import signal
 import socket
 from typing import Any
@@ -10,6 +9,11 @@ from typing import Any
 from dbus_fast import BusType, PropertyAccess, Variant
 from dbus_fast.aio import MessageBus
 from dbus_fast.service import ServiceInterface, dbus_property, method
+from characteristics import (
+    PrivateIpCharacteristic,
+    WifiProvisioningCharacteristic,
+    WifiStatusCharacteristic,
+)
 from config import (
     ADV_MAX_INTERVAL_MS,
     ADV_MIN_INTERVAL_MS,
@@ -106,68 +110,6 @@ async def _get_current_network_details() -> tuple[str, str]:
     return await get_ssid(), await get_private_ip()
 
 
-class WifiStatusCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__(GATT_CHARACTERISTIC_IFACE)
-        self.cached_network_state = None
-        self.cached_payload = b""
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return WIFI_STATUS_CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["read"]
-
-    async def update_cached_value(self) -> None:
-        if self.cached_network_state != network_state_counter:
-            ssid, _private_ip = await _get_current_network_details()
-            self.cached_network_state = network_state_counter
-            self.cached_payload = json.dumps(
-                {"ssid": ssid, "st": network_state_counter}
-            ).encode("utf-8")
-
-    @method()
-    async def ReadValue(self, _options: "a{sv}") -> "ay":
-        return self.cached_payload
-
-
-class PrivateIpCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__(GATT_CHARACTERISTIC_IFACE)
-        self.cached_network_state = None
-        self.cached_payload = b""
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return PRIVATE_IP_CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["read"]
-
-    async def update_cached_value(self) -> None:
-        if self.cached_network_state != network_state_counter:
-            _ssid, private_ip = await _get_current_network_details()
-            self.cached_network_state = network_state_counter
-            self.cached_payload = json.dumps(
-                {"private_ip": private_ip, "st": network_state_counter}
-            ).encode("utf-8")
-
-    @method()
-    async def ReadValue(self, _options: "a{sv}") -> "ay":
-        return self.cached_payload
-
-
 async def _restart_avahi(device_id: str) -> None:
     """Kill any running avahi-publish and start a fresh one if WiFi is up."""
     global avahi_proc
@@ -243,37 +185,6 @@ async def _apply_wifi(ssid: str, psk: str) -> None:
         print(f"Successfully connected to WiFi network '{ssid}'")
     else:
         print(f"Failed to connect to WiFi network '{ssid}': {stderr.decode()}")
-
-
-class WifiProvisioningCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__(GATT_CHARACTERISTIC_IFACE)
-        self.value = b""
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return WIFI_CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["write"]
-
-    @method()
-    async def WriteValue(self, value: "ay", _options: "a{sv}") -> None:
-        self.value = bytes(value)
-        try:
-            payload = json.loads(self.value.decode("utf-8"))
-            ssid = payload.get("ssid")
-            psk = payload.get("psk")
-            if ssid and psk:
-                print(f"Received WiFi provisioning data: SSID={ssid}, PSK={psk}")
-                asyncio.create_task(_apply_wifi(ssid, psk))
-        except Exception as e:
-            print(f"Error processing WiFi provisioning data: {e}")
 
 
 class Application(ServiceInterface):
@@ -401,10 +312,14 @@ async def main() -> None:
 
     app = Application()
     svc = GattService()
-    wifi_ch = WifiProvisioningCharacteristic()
+    wifi_ch = WifiProvisioningCharacteristic(_apply_wifi)
     adv = Advertisement(device_id)
-    wifi_status_ch = WifiStatusCharacteristic()
-    private_ip_ch = PrivateIpCharacteristic()
+    wifi_status_ch = WifiStatusCharacteristic(
+        _get_current_network_details, lambda: network_state_counter
+    )
+    private_ip_ch = PrivateIpCharacteristic(
+        _get_current_network_details, lambda: network_state_counter
+    )
 
     # Fetch initial wifi state
     print("Fetching initial WiFi state...", flush=True)

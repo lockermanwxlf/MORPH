@@ -1,7 +1,26 @@
 <script lang="ts">
+	const WIFI_PROVISIONING_CHAR_UUID =
+		"eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3";
+	const WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd";
+	const PRIVATE_IP_CHAR_UUID = "2b6a9f48-4f8f-4f9f-9fd5-8e04b7d1c0f4";
+
 	type BrowserBluetoothDevice = {
 		id: string;
 		name?: string | null;
+		gatt?: {
+			connect(): Promise<{
+				getPrimaryService(
+					service: string | number
+				): Promise<{
+					getCharacteristic(
+						characteristic: string
+					): Promise<{
+						readValue(): Promise<DataView>;
+						writeValue(value: BufferSource): Promise<void>;
+					}>;
+				}>;
+			}>;
+		};
 	};
 
 	type BrowserBluetooth = {
@@ -15,6 +34,9 @@
 		id: string;
 		name: string;
 		addressLabel: string;
+		ssid: string;
+		privateIp: string;
+		networkState: number | null;
 	};
 
 	const FE99_SERVICE = 0xfe99;
@@ -23,8 +45,11 @@
 	let isBluetoothAvailable = $state(false);
 	let isScanning = $state(false);
 	let scanError = $state("");
+	let selectedBluetoothDevice = $state<BrowserBluetoothDevice | null>(null);
 	let pairedDevice = $state<ScannedDevice | null>(null);
 	let isWifiDialogOpen = $state(false);
+	let isSavingWifi = $state(false);
+	let wifiError = $state("");
 	let ssid = $state("");
 	let password = $state("");
 
@@ -34,7 +59,103 @@
 			name: device.name?.trim() || "Unnamed device",
 			// Browsers intentionally hide BLE MAC addresses, so we surface the stable device id instead.
 			addressLabel: device.id,
+			ssid: "",
+			privateIp: "",
+			networkState: null,
 		};
+	}
+
+	function readJsonValue<T>(value: DataView): T | null {
+		try {
+			const bytes = new Uint8Array(
+				value.buffer,
+				value.byteOffset,
+				value.byteLength
+			);
+			const json = new TextDecoder().decode(bytes);
+			return JSON.parse(json) as T;
+		} catch (error) {
+			console.error("Failed to decode characteristic value.", error);
+			return null;
+		}
+	}
+
+	async function readDeviceInfo(
+		device: BrowserBluetoothDevice
+	): Promise<Pick<ScannedDevice, "ssid" | "privateIp" | "networkState">> {
+		if (!device.gatt) {
+			throw new Error("Bluetooth GATT is not available for this device.");
+		}
+
+		const server = await device.gatt.connect();
+		const service = await server.getPrimaryService(FE99_SERVICE);
+		const [wifiStatusChar, privateIpChar] = await Promise.all([
+			service.getCharacteristic(WIFI_STATUS_CHAR_UUID),
+			service.getCharacteristic(PRIVATE_IP_CHAR_UUID),
+		]);
+		const [wifiStatusValue, privateIpValue] = await Promise.all([
+			wifiStatusChar.readValue(),
+			privateIpChar.readValue(),
+		]);
+		const wifiStatus = readJsonValue<{ ssid?: string; st?: number }>(
+			wifiStatusValue
+		);
+		const privateIp = readJsonValue<{ private_ip?: string; st?: number }>(
+			privateIpValue
+		);
+
+		return {
+			ssid: wifiStatus?.ssid ?? "",
+			privateIp: privateIp?.private_ip ?? "",
+			networkState: wifiStatus?.st ?? privateIp?.st ?? null,
+		};
+	}
+
+	async function saveWifiCredentials() {
+		wifiError = "";
+
+		if (!selectedBluetoothDevice?.gatt) {
+			wifiError = "No Bluetooth device is connected.";
+			return;
+		}
+
+		if (!ssid.trim()) {
+			wifiError = "SSID is required.";
+			return;
+		}
+
+		isSavingWifi = true;
+
+		try {
+			const server = await selectedBluetoothDevice.gatt.connect();
+			const service = await server.getPrimaryService(FE99_SERVICE);
+			const wifiChar = await service.getCharacteristic(
+				WIFI_PROVISIONING_CHAR_UUID
+			);
+			const payload = new TextEncoder().encode(
+				JSON.stringify({
+					ssid: ssid.trim(),
+					psk: password,
+				})
+			);
+
+			await wifiChar.writeValue(payload);
+
+			if (pairedDevice) {
+				pairedDevice = {
+					...pairedDevice,
+					ssid: ssid.trim(),
+				};
+			}
+
+			isWifiDialogOpen = false;
+			password = "";
+		} catch (error) {
+			console.error(error);
+			wifiError = "Failed to send WiFi credentials to the device.";
+		} finally {
+			isSavingWifi = false;
+		}
 	}
 
 	async function scanForDevices() {
@@ -61,8 +182,12 @@
 				filters: [{ services: [FE99_SERVICE] }],
 				optionalServices: [FE99_SERVICE],
 			});
-
-			pairedDevice = toDeviceRecord(device);
+			selectedBluetoothDevice = device;
+			const deviceInfo = await readDeviceInfo(device);
+			pairedDevice = { ...toDeviceRecord(device), ...deviceInfo };
+			if (deviceInfo.privateIp) {
+				host = deviceInfo.privateIp;
+			}
 		} catch (error) {
 			if (
 				error instanceof DOMException &&
@@ -144,6 +269,20 @@
 								>
 									Device ID: {pairedDevice.addressLabel}
 								</div>
+								<div
+									class="mt-1 text-sm"
+									style:color="var(--muted-text)"
+								>
+									SSID:
+									{pairedDevice.ssid || "Not connected"}
+								</div>
+								<div
+									class="mt-1 text-sm"
+									style:color="var(--muted-text)"
+								>
+									Private IP:
+									{pairedDevice.privateIp || "Unavailable"}
+								</div>
 							</div>
 							<button
 								type="button"
@@ -152,9 +291,11 @@
 								style:color="#dc2626"
 								aria-label="Unpair device"
 								onclick={() => {
+									selectedBluetoothDevice = null;
 									pairedDevice = null;
 									isWifiDialogOpen = false;
 									scanError = "";
+									wifiError = "";
 								}}
 							>
 								X
@@ -166,6 +307,9 @@
 							style:background="var(--accent-soft)"
 							style:color="var(--accent)"
 							onclick={() => {
+								wifiError = "";
+								ssid = pairedDevice?.ssid ?? "";
+								password = "";
 								isWifiDialogOpen = true;
 							}}
 						>
@@ -267,13 +411,19 @@
 				/>
 			</label>
 
+			{#if wifiError}
+				<p class="mt-4 text-sm text-red-500">{wifiError}</p>
+			{/if}
+
 			<div class="mt-6 flex justify-end gap-3">
 				<button
 					type="button"
 					class="rounded-2xl px-4 py-3 text-sm font-medium"
 					style:background="var(--surface-soft)"
+					disabled={isSavingWifi}
 					onclick={() => {
 						isWifiDialogOpen = false;
+						wifiError = "";
 					}}
 				>
 					Cancel
@@ -283,8 +433,10 @@
 					class="rounded-2xl px-4 py-3 text-sm font-semibold"
 					style:background="var(--accent)"
 					style:color="var(--page-bg)"
+					disabled={isSavingWifi}
+					onclick={saveWifiCredentials}
 				>
-					Save WiFi
+					{isSavingWifi ? "Saving..." : "Save WiFi"}
 				</button>
 			</div>
 		</div>
