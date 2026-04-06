@@ -19,7 +19,6 @@ LE_ADV_MANAGER_IFACE = "org.bluez.LEAdvertisingManager1"
 
 APP_PATH = "/com/morph/app"
 SERVICE_PATH = "/com/morph/app/service0"
-CHAR_PATH = "/com/morph/app/service0/char0"
 ADV_PATH = "/com/morph/advertisement0"
 
 NM_SERVICE = "org.freedesktop.NetworkManager"
@@ -27,7 +26,6 @@ NM_PATH = "/org/freedesktop/NetworkManager"
 NM_IFACE = "org.freedesktop.NetworkManager"
 
 SERVICE_UUID = "fe99"
-CHAR_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fb"
 # Advertising interval in milliseconds (BlueZ accepts 20ms to 10,485s).
 # Use equal values for near-fixed cadence, or a small range.
 ADV_MIN_INTERVAL_MS = 200
@@ -42,64 +40,71 @@ avahi_proc: asyncio.subprocess.Process | None = None
 
 # Wifi hotspot stuff
 WIFI_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3"
-WIFI_CHAR_PATH = "/com/morph/app/service0/char1"
+WIFI_CHAR_PATH = "/com/morph/app/service0/char0"
 
 
 # ssid request
 WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd"
-WIFI_STATUS_CHAR_PATH = "/com/morph/app/service0/char2"
+WIFI_STATUS_CHAR_PATH = "/com/morph/app/service0/char1"
 PRIVATE_IP_CHAR_UUID = "2b6a9f48-4f8f-4f9f-9fd5-8e04b7d1c0f4"
-PRIVATE_IP_CHAR_PATH = "/com/morph/app/service0/char3"
+PRIVATE_IP_CHAR_PATH = "/com/morph/app/service0/char2"
+
+
+async def get_ssid() -> str:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "sudo",
+            "iw",
+            "dev",
+            "wlan0",
+            "link",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        output = stdout.decode()
+        return next(
+            (
+                line.split("SSID:", 1)[1].strip()
+                for line in output.splitlines()
+                if "SSID:" in line
+            ),
+            "",
+        )
+    except Exception as e:
+        print("ERROR [get_ssid]:", e)
+        return ""
+
+
+async def get_private_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("10.255.255.255", 1))
+            return sock.getsockname()[0]
+    except Exception:
+        pass
+
+    proc = await asyncio.create_subprocess_shell(
+        "hostname -I | awk '{print $1}'",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    try:
+        out, err = await proc.communicate()
+        if proc.returncode == 0:
+            return out.decode().strip()
+
+        print("ERROR [get_private_ip]:", err.decode())
+        return ""
+    except asyncio.CancelledError:
+        proc.terminate()
+        await proc.wait()
+        raise
 
 
 async def _get_current_network_details() -> tuple[str, str]:
-    ssid = ""
-    private_ip = ""
-
-    try:
-        wifi_proc = await asyncio.create_subprocess_exec(
-            "nmcli",
-            "-t",
-            "-f",
-            "active,ssid",
-            "device",
-            "wifi",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        wifi_stdout, _ = await wifi_proc.communicate()
-
-        if wifi_proc.returncode == 0:
-            lines = wifi_stdout.decode().strip().splitlines()
-            ssid = next((line[4:] for line in lines if line.startswith("yes:")), "")
-    except Exception as e:
-        print(f"Error fetching current WiFi SSID: {e}")
-
-    try:
-        ip_proc = await asyncio.create_subprocess_exec(
-            "nmcli",
-            "-t",
-            "-g",
-            "IP4.ADDRESS",
-            "connection",
-            "show",
-            "--active",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        ip_stdout, _ = await ip_proc.communicate()
-
-        if ip_proc.returncode == 0:
-            ip_lines = [
-                line.strip() for line in ip_stdout.decode().splitlines() if line.strip()
-            ]
-            private_ip = next(
-                (line.split("/", 1)[0] for line in ip_lines if "." in line), ""
-            )
-    except Exception as e:
-        print(f"Error fetching current private IP: {e}")
-
-    return ssid, private_ip
+    return await get_ssid(), await get_private_ip()
 
 
 class WifiStatusCharacteristic(ServiceInterface):
@@ -177,21 +182,7 @@ async def _restart_avahi(device_id: str) -> None:
             print(f"Error stopping avahi-publish: {e}")
     avahi_proc = None
 
-    # Check whether there is an active WiFi connection
-    check = await asyncio.create_subprocess_exec(
-        "nmcli",
-        "-t",
-        "-f",
-        "active,ssid",
-        "device",
-        "wifi",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    stdout, _ = await check.communicate()
-    connected = any(
-        line.startswith("yes:") for line in stdout.decode().strip().splitlines()
-    )
+    connected = bool(await get_ssid())
 
     if not connected:
         print("avahi-publish: no active WiFi — not starting", flush=True)
@@ -300,14 +291,6 @@ class Application(ServiceInterface):
                     "Includes": Variant("ao", []),
                 }
             },
-            CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
-                    "Service": Variant("o", SERVICE_PATH),
-                    "UUID": Variant("s", CHAR_UUID),
-                    "Flags": Variant("as", ["read"]),
-                    "Value": Variant("ay", b"ready"),
-                }
-            },
             WIFI_CHAR_PATH: {
                 "org.bluez.GattCharacteristic1": {
                     "Service": Variant("o", SERVICE_PATH),
@@ -347,32 +330,6 @@ class GattService(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     def Includes(self) -> "ao":
         return []
-
-
-class GattCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
-        self.value = b"ready"
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["read"]
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Value(self) -> "ay":
-        return self.value
-
-    @method()
-    def ReadValue(self, _options: "a{sv}") -> "ay":
-        return self.value
 
 
 class Advertisement(ServiceInterface):
@@ -445,7 +402,6 @@ async def main() -> None:
 
     app = Application()
     svc = GattService()
-    ch = GattCharacteristic()
     wifi_ch = WifiProvisioningCharacteristic()
     adv = Advertisement(device_id)
     wifi_status_ch = WifiStatusCharacteristic()
@@ -459,7 +415,6 @@ async def main() -> None:
 
     bus.export(APP_PATH, app)
     bus.export(SERVICE_PATH, svc)
-    bus.export(CHAR_PATH, ch)
     bus.export(WIFI_CHAR_PATH, wifi_ch)
     bus.export(ADV_PATH, adv)
     bus.export(WIFI_STATUS_CHAR_PATH, wifi_status_ch)
@@ -526,7 +481,6 @@ async def main() -> None:
     bus.unexport(WIFI_CHAR_PATH)
     bus.unexport(WIFI_STATUS_CHAR_PATH)
     bus.unexport(PRIVATE_IP_CHAR_PATH)
-    bus.unexport(CHAR_PATH)
     bus.unexport(SERVICE_PATH)
     bus.unexport(APP_PATH)
     bus.disconnect()
