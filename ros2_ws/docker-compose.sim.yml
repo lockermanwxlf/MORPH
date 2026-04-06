@@ -1,0 +1,9 @@
+services:
+  morph-sim:
+    build:
+      context: .
+      dockerfile: docker/sim.Dockerfile
+    ports:
+      - "8765:8765"
+    stdin_open: true
+    tty: true
