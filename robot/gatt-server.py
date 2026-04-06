@@ -5,32 +5,43 @@ import asyncio
 import json
 import signal
 import socket
-from pathlib import Path
 from typing import Any
 
 from dbus_fast import BusType, PropertyAccess, Variant
 from dbus_fast.aio import MessageBus
 from dbus_fast.service import ServiceInterface, dbus_property, method
-
-BLUEZ_SERVICE = "org.bluez"
-OBJ_MANAGER_IFACE = "org.freedesktop.DBus.ObjectManager"
-GATT_MANAGER_IFACE = "org.bluez.GattManager1"
-LE_ADV_MANAGER_IFACE = "org.bluez.LEAdvertisingManager1"
-
-APP_PATH = "/com/morph/app"
-SERVICE_PATH = "/com/morph/app/service0"
-ADV_PATH = "/com/morph/advertisement0"
-
-NM_SERVICE = "org.freedesktop.NetworkManager"
-NM_PATH = "/org/freedesktop/NetworkManager"
-NM_IFACE = "org.freedesktop.NetworkManager"
-
-SERVICE_UUID = "fe99"
-# Advertising interval in milliseconds (BlueZ accepts 20ms to 10,485s).
-# Use equal values for near-fixed cadence, or a small range.
-ADV_MIN_INTERVAL_MS = 200
-ADV_MAX_INTERVAL_MS = 300
-DEVICE_ID_PATH = Path("/etc/morph/device_id")
+from config import (
+    ADV_MAX_INTERVAL_MS,
+    ADV_MIN_INTERVAL_MS,
+    ADV_PATH,
+    APP_PATH,
+    DEVICE_ID_PATH,
+    MORPH_LOCAL_NAME,
+    MORPH_SERVICE_PORT,
+    MORPH_SERVICE_TYPE,
+    PRIVATE_IP_CHAR_UUID,
+    PRIVATE_IP_CHAR_PATH,
+    SERVICE_UUID,
+    SERVICE_PATH,
+    WIFI_CHAR_UUID,
+    WIFI_CHAR_PATH,
+    WIFI_INTERFACE,
+    WIFI_STATUS_CHAR_UUID,
+    WIFI_STATUS_CHAR_PATH,
+)
+from constants import (
+    BLUEZ_SERVICE,
+    DBUS_PROPERTIES_IFACE,
+    GATT_CHARACTERISTIC_IFACE,
+    GATT_MANAGER_IFACE,
+    GATT_SERVICE_IFACE,
+    LE_ADVERTISEMENT_IFACE,
+    LE_ADV_MANAGER_IFACE,
+    NM_IFACE,
+    NM_PATH,
+    NM_SERVICE,
+    OBJ_MANAGER_IFACE,
+)
 
 # Global network state counter
 network_state_counter = 0
@@ -38,25 +49,13 @@ network_state_counter = 0
 # avahi-publish process handle
 avahi_proc: asyncio.subprocess.Process | None = None
 
-# Wifi hotspot stuff
-WIFI_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3"
-WIFI_CHAR_PATH = "/com/morph/app/service0/char0"
-
-
-# ssid request
-WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd"
-WIFI_STATUS_CHAR_PATH = "/com/morph/app/service0/char1"
-PRIVATE_IP_CHAR_UUID = "2b6a9f48-4f8f-4f9f-9fd5-8e04b7d1c0f4"
-PRIVATE_IP_CHAR_PATH = "/com/morph/app/service0/char2"
-
-
 async def get_ssid() -> str:
     try:
         proc = await asyncio.create_subprocess_exec(
             "sudo",
             "iw",
             "dev",
-            "wlan0",
+            WIFI_INTERFACE,
             "link",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -109,7 +108,7 @@ async def _get_current_network_details() -> tuple[str, str]:
 
 class WifiStatusCharacteristic(ServiceInterface):
     def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
+        super().__init__(GATT_CHARACTERISTIC_IFACE)
         self.cached_network_state = None
         self.cached_payload = b""
 
@@ -140,7 +139,7 @@ class WifiStatusCharacteristic(ServiceInterface):
 
 class PrivateIpCharacteristic(ServiceInterface):
     def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
+        super().__init__(GATT_CHARACTERISTIC_IFACE)
         self.cached_network_state = None
         self.cached_payload = b""
 
@@ -191,7 +190,7 @@ async def _restart_avahi(device_id: str) -> None:
     hostname = socket.gethostname()
     service_name = f"MORPH-{hostname}"
     txt = f"DEVICE_ID={device_id}" if device_id else ""
-    cmd = ["avahi-publish", "-s", service_name, "_morph-ws._tcp", "8765"]
+    cmd = ["avahi-publish", "-s", service_name, MORPH_SERVICE_TYPE, MORPH_SERVICE_PORT]
     if txt:
         cmd.append(txt)
     print(f"Starting avahi-publish: {' '.join(cmd)}", flush=True)
@@ -248,7 +247,7 @@ async def _apply_wifi(ssid: str, psk: str) -> None:
 
 class WifiProvisioningCharacteristic(ServiceInterface):
     def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
+        super().__init__(GATT_CHARACTERISTIC_IFACE)
         self.value = b""
 
     @dbus_property(access=PropertyAccess.READ)
@@ -285,28 +284,28 @@ class Application(ServiceInterface):
     def GetManagedObjects(self) -> "a{oa{sa{sv}}}":
         return {
             SERVICE_PATH: {
-                "org.bluez.GattService1": {
+                GATT_SERVICE_IFACE: {
                     "UUID": Variant("s", SERVICE_UUID),
                     "Primary": Variant("b", True),
                     "Includes": Variant("ao", []),
                 }
             },
             WIFI_CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
+                GATT_CHARACTERISTIC_IFACE: {
                     "Service": Variant("o", SERVICE_PATH),
                     "UUID": Variant("s", WIFI_CHAR_UUID),
                     "Flags": Variant("as", ["write"]),
                 }
             },
             WIFI_STATUS_CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
+                GATT_CHARACTERISTIC_IFACE: {
                     "Service": Variant("o", SERVICE_PATH),
                     "UUID": Variant("s", WIFI_STATUS_CHAR_UUID),
                     "Flags": Variant("as", ["read"]),
                 }
             },
             PRIVATE_IP_CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
+                GATT_CHARACTERISTIC_IFACE: {
                     "Service": Variant("o", SERVICE_PATH),
                     "UUID": Variant("s", PRIVATE_IP_CHAR_UUID),
                     "Flags": Variant("as", ["read"]),
@@ -317,7 +316,7 @@ class Application(ServiceInterface):
 
 class GattService(ServiceInterface):
     def __init__(self) -> None:
-        super().__init__("org.bluez.GattService1")
+        super().__init__(GATT_SERVICE_IFACE)
 
     @dbus_property(access=PropertyAccess.READ)
     def UUID(self) -> "s":
@@ -334,7 +333,7 @@ class GattService(ServiceInterface):
 
 class Advertisement(ServiceInterface):
     def __init__(self, device_id: str) -> None:
-        super().__init__("org.bluez.LEAdvertisement1")
+        super().__init__(LE_ADVERTISEMENT_IFACE)
         self.device_id = device_id
 
     def increment_network_state(self) -> None:
@@ -351,7 +350,7 @@ class Advertisement(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def LocalName(self) -> "s":
-        return "Morph"
+        return MORPH_LOCAL_NAME
 
     @dbus_property(access=PropertyAccess.READ)
     def ManufacturerData(self) -> "a{qv}":
@@ -428,12 +427,12 @@ async def main() -> None:
     # Listen for network changes
     nm_intro = await bus.introspect(NM_SERVICE, NM_PATH)
     nm_obj = bus.get_proxy_object(NM_SERVICE, NM_PATH, nm_intro)
-    props_iface = nm_obj.get_interface("org.freedesktop.DBus.Properties")
+    props_iface = nm_obj.get_interface(DBUS_PROPERTIES_IFACE)
 
     def on_network_state_changed(
         interface_name: str, changed_properties: dict, invalidated_properties: list
     ) -> None:
-        if interface_name == "org.freedesktop.NetworkManager":
+        if interface_name == NM_IFACE:
             if "State" in changed_properties:
                 new_state = changed_properties["State"].value
                 print(f"NetworkManager State changed to: {new_state}", flush=True)
