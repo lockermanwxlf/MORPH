@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { cubicOut } from "svelte/easing";
+	import type { TransitionConfig } from "svelte/transition";
+
 	const WIFI_PROVISIONING_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3";
 	const NETWORK_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd";
 
@@ -56,6 +59,40 @@
 			ssid: "",
 			privateIp: "",
 			networkState: null,
+		};
+	}
+
+	function blurFade(
+		_node: Element,
+		{ delay = 0, duration = 220, easing = cubicOut } = {},
+	): TransitionConfig {
+		return {
+			delay,
+			duration,
+			easing,
+			css: (t) => {
+				const softened = t * t;
+				return `
+					opacity: ${t};
+					backdrop-filter: blur(${softened * 24}px);
+					-webkit-backdrop-filter: blur(${softened * 24}px);
+				`;
+			},
+		};
+	}
+
+	function dialogPop(
+		_node: Element,
+		{ delay = 0, duration = 260, easing = cubicOut } = {},
+	): TransitionConfig {
+		return {
+			delay,
+			duration,
+			easing,
+			css: (t) => `
+				opacity: ${t};
+				transform: translateY(${(1 - t) * 18}px) scale(${0.96 + t * 0.04});
+			`,
 		};
 	}
 
@@ -350,11 +387,13 @@
 	<div
 		class="fixed backdrop-blur-xl inset-0 z-50 flex items-center justify-center px-6 py-6"
 		style:background="rgba(15, 23, 42, 0.45)"
+		transition:blurFade
 	>
 		<div
 			class="w-full max-w-md rounded-4xl border p-6 sm:p-8"
 			style:border-color="var(--border-soft)"
 			style:background="var(--surface-solid)"
+			transition:dialogPop
 		>
 			<div>
 				<h2 class="text-2xl font-semibold">Set Device WiFi</h2>
