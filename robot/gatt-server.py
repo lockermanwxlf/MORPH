@@ -10,9 +10,8 @@ from dbus_fast import BusType, PropertyAccess, Variant
 from dbus_fast.aio import MessageBus
 from dbus_fast.service import ServiceInterface, dbus_property, method
 from characteristics import (
-    PrivateIpCharacteristic,
+    NetworkStatusCharacteristic,
     WifiProvisioningCharacteristic,
-    WifiStatusCharacteristic,
 )
 from config import (
     ADV_MAX_INTERVAL_MS,
@@ -23,15 +22,13 @@ from config import (
     MORPH_LOCAL_NAME,
     MORPH_SERVICE_PORT,
     MORPH_SERVICE_TYPE,
-    PRIVATE_IP_CHAR_UUID,
-    PRIVATE_IP_CHAR_PATH,
+    NETWORK_STATUS_CHAR_PATH,
+    NETWORK_STATUS_CHAR_UUID,
     SERVICE_UUID,
     SERVICE_PATH,
     WIFI_CHAR_UUID,
     WIFI_CHAR_PATH,
     WIFI_INTERFACE,
-    WIFI_STATUS_CHAR_UUID,
-    WIFI_STATUS_CHAR_PATH,
 )
 from constants import (
     BLUEZ_SERVICE,
@@ -208,17 +205,10 @@ class Application(ServiceInterface):
                     "Flags": Variant("as", ["write"]),
                 }
             },
-            WIFI_STATUS_CHAR_PATH: {
+            NETWORK_STATUS_CHAR_PATH: {
                 GATT_CHARACTERISTIC_IFACE: {
                     "Service": Variant("o", SERVICE_PATH),
-                    "UUID": Variant("s", WIFI_STATUS_CHAR_UUID),
-                    "Flags": Variant("as", ["read"]),
-                }
-            },
-            PRIVATE_IP_CHAR_PATH: {
-                GATT_CHARACTERISTIC_IFACE: {
-                    "Service": Variant("o", SERVICE_PATH),
-                    "UUID": Variant("s", PRIVATE_IP_CHAR_UUID),
+                    "UUID": Variant("s", NETWORK_STATUS_CHAR_UUID),
                     "Flags": Variant("as", ["read"]),
                 }
             },
@@ -314,25 +304,20 @@ async def main() -> None:
     svc = GattService()
     wifi_ch = WifiProvisioningCharacteristic(_apply_wifi)
     adv = Advertisement(device_id)
-    wifi_status_ch = WifiStatusCharacteristic(
-        _get_current_network_details, lambda: network_state_counter
-    )
-    private_ip_ch = PrivateIpCharacteristic(
+    network_status_ch = NetworkStatusCharacteristic(
         _get_current_network_details, lambda: network_state_counter
     )
 
     # Fetch initial wifi state
     print("Fetching initial WiFi state...", flush=True)
-    await wifi_status_ch.update_cached_value()
-    await private_ip_ch.update_cached_value()
+    await network_status_ch.update_cached_value()
     await _restart_avahi(device_id)
 
     bus.export(APP_PATH, app)
     bus.export(SERVICE_PATH, svc)
     bus.export(WIFI_CHAR_PATH, wifi_ch)
     bus.export(ADV_PATH, adv)
-    bus.export(WIFI_STATUS_CHAR_PATH, wifi_status_ch)
-    bus.export(PRIVATE_IP_CHAR_PATH, private_ip_ch)
+    bus.export(NETWORK_STATUS_CHAR_PATH, network_status_ch)
 
     adapter_intro = await bus.introspect(BLUEZ_SERVICE, adapter_path)
     adapter_obj = bus.get_proxy_object(BLUEZ_SERVICE, adapter_path, adapter_intro)
@@ -355,8 +340,7 @@ async def main() -> None:
                 async def sync_network_state():
                     global network_state_counter
                     network_state_counter += 1
-                    await wifi_status_ch.update_cached_value()
-                    await private_ip_ch.update_cached_value()
+                    await network_status_ch.update_cached_value()
                     await _restart_avahi(device_id)
                     if "PrimaryConnection" in changed_properties:
                         adv.emit_properties_changed(
@@ -393,8 +377,7 @@ async def main() -> None:
     await gatt_mgr.call_unregister_application(APP_PATH)
     bus.unexport(ADV_PATH)
     bus.unexport(WIFI_CHAR_PATH)
-    bus.unexport(WIFI_STATUS_CHAR_PATH)
-    bus.unexport(PRIVATE_IP_CHAR_PATH)
+    bus.unexport(NETWORK_STATUS_CHAR_PATH)
     bus.unexport(SERVICE_PATH)
     bus.unexport(APP_PATH)
     bus.disconnect()

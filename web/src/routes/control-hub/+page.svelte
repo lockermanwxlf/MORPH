@@ -1,20 +1,14 @@
 <script lang="ts">
-	const WIFI_PROVISIONING_CHAR_UUID =
-		"eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3";
-	const WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd";
-	const PRIVATE_IP_CHAR_UUID = "2b6a9f48-4f8f-4f9f-9fd5-8e04b7d1c0f4";
+	const WIFI_PROVISIONING_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3";
+	const NETWORK_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd";
 
 	type BrowserBluetoothDevice = {
 		id: string;
 		name?: string | null;
 		gatt?: {
 			connect(): Promise<{
-				getPrimaryService(
-					service: string | number
-				): Promise<{
-					getCharacteristic(
-						characteristic: string
-					): Promise<{
+				getPrimaryService(service: string | number): Promise<{
+					getCharacteristic(characteristic: string): Promise<{
 						readValue(): Promise<DataView>;
 						writeValue(value: BufferSource): Promise<void>;
 					}>;
@@ -70,7 +64,7 @@
 			const bytes = new Uint8Array(
 				value.buffer,
 				value.byteOffset,
-				value.byteLength
+				value.byteLength,
 			);
 			const json = new TextDecoder().decode(bytes);
 			return JSON.parse(json) as T;
@@ -81,7 +75,7 @@
 	}
 
 	async function readDeviceInfo(
-		device: BrowserBluetoothDevice
+		device: BrowserBluetoothDevice,
 	): Promise<Pick<ScannedDevice, "ssid" | "privateIp" | "networkState">> {
 		if (!device.gatt) {
 			throw new Error("Bluetooth GATT is not available for this device.");
@@ -89,25 +83,20 @@
 
 		const server = await device.gatt.connect();
 		const service = await server.getPrimaryService(FE99_SERVICE);
-		const [wifiStatusChar, privateIpChar] = await Promise.all([
-			service.getCharacteristic(WIFI_STATUS_CHAR_UUID),
-			service.getCharacteristic(PRIVATE_IP_CHAR_UUID),
-		]);
-		const [wifiStatusValue, privateIpValue] = await Promise.all([
-			wifiStatusChar.readValue(),
-			privateIpChar.readValue(),
-		]);
-		const wifiStatus = readJsonValue<{ ssid?: string; st?: number }>(
-			wifiStatusValue
+		const networkStatusChar = await service.getCharacteristic(
+			NETWORK_STATUS_CHAR_UUID,
 		);
-		const privateIp = readJsonValue<{ private_ip?: string; st?: number }>(
-			privateIpValue
-		);
+		const networkStatusValue = await networkStatusChar.readValue();
+		const networkStatus = readJsonValue<{
+			ssid?: string;
+			private_ip?: string;
+			st?: number;
+		}>(networkStatusValue);
 
 		return {
-			ssid: wifiStatus?.ssid ?? "",
-			privateIp: privateIp?.private_ip ?? "",
-			networkState: wifiStatus?.st ?? privateIp?.st ?? null,
+			ssid: networkStatus?.ssid ?? "",
+			privateIp: networkStatus?.private_ip ?? "",
+			networkState: networkStatus?.st ?? null,
 		};
 	}
 
@@ -130,13 +119,13 @@
 			const server = await selectedBluetoothDevice.gatt.connect();
 			const service = await server.getPrimaryService(FE99_SERVICE);
 			const wifiChar = await service.getCharacteristic(
-				WIFI_PROVISIONING_CHAR_UUID
+				WIFI_PROVISIONING_CHAR_UUID,
 			);
 			const payload = new TextEncoder().encode(
 				JSON.stringify({
 					ssid: ssid.trim(),
 					psk: password,
-				})
+				}),
 			);
 
 			await wifiChar.writeValue(payload);
@@ -359,7 +348,7 @@
 
 {#if isWifiDialogOpen}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center px-6 py-6"
+		class="fixed backdrop-blur-xl inset-0 z-50 flex items-center justify-center px-6 py-6"
 		style:background="rgba(15, 23, 42, 0.45)"
 	>
 		<div

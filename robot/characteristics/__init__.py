@@ -1,9 +1,7 @@
-from .private_ip import PrivateIpCharacteristic
+from .network_status import NetworkStatusCharacteristic
 from .wifi_provisioning import WifiProvisioningCharacteristic
-from .wifi_status import WifiStatusCharacteristic
 
 __all__ = [
-    "PrivateIpCharacteristic",
+    "NetworkStatusCharacteristic",
     "WifiProvisioningCharacteristic",
-    "WifiStatusCharacteristic",
 ]

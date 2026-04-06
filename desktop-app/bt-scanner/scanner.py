@@ -89,13 +89,13 @@ async def fetch_ssid_for_device(address: str) -> None:
     log_debug(f"Fetching SSID for device {address}")
     async with BleakClient(address) as client:
         try:
-            wifi_status = await client.read_gatt_char(
+            network_status = await client.read_gatt_char(
                 "a2169d6e-07aa-457e-8139-19803dbd6bfd"
             )
-            wifi_status = bytes(wifi_status).decode("utf-8")
-            wifi_status = json.loads(wifi_status)
-            log_debug(wifi_status)
-            ssid = wifi_status.get("ssid")
+            network_status = bytes(network_status).decode("utf-8")
+            network_status = json.loads(network_status)
+            log_debug(network_status)
+            ssid = network_status.get("ssid")
         except Exception as e:
             log_debug(f"Error fetching SSID for device {address}: {e}")
             ssid = None
