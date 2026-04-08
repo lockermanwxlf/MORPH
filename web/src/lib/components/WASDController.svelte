@@ -64,7 +64,7 @@
         W
     </div>
     <div
-        class="flex items-center row-start-2 justify-center rounded bg-(--accent-soft) transition-all duration-150 cursor-default"
+        class="flex items-center row-start-1 justify-center rounded bg-(--accent-soft) transition-all duration-150 cursor-default"
         class:active={keyboardState.a}
         class:pressed={keyboardState.a}
     >
@@ -78,7 +78,7 @@
         S
     </div>
     <div
-        class="flex items-center row-start-2 col-start-3 justify-center rounded bg-(--accent-soft) transition-all duration-150 cursor-default"
+        class="flex items-center row-start-1 col-start-3 justify-center rounded bg-(--accent-soft) transition-all duration-150 cursor-default"
         class:active={keyboardState.d}
         class:pressed={keyboardState.d}
     >
