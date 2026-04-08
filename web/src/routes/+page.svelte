@@ -6,14 +6,43 @@
 	/>
 </svelte:head>
 
-<div class="min-h-dvh text-[color:var(--page-text)]">
+<div class="min-h-dvh text-(--page-text)">
+	<header class="px-6 pt-3 sm:px-10 sm:pt-4 lg:px-16 lg:pt-5">
+		<div
+			class="mx-auto flex w-full items-center rounded-3xl border px-3 py-2 sm:px-4 sm:py-2.5"
+			style:border-color="var(--border-soft)"
+			style:background="linear-gradient(135deg, #0f766e 0%, #123b52 100%)"
+			style:box-shadow="0 10px 24px var(--panel-shadow)"
+		>
+			<a href="/" class="flex items-center">
+				<img
+					src="/morph-word-logo-white.png"
+					alt="MORPH"
+					class="h-8 w-auto"
+				/>
+			</a>
+
+			<a
+				href="/hub"
+				class="rounded-full px-3 py-1.5 text-sm font-semibold transition sm:px-4 lg:ml-2"
+				style:color="#ffffff"
+			>
+				MORPH Hub
+			</a>
+		</div>
+	</header>
+
 	<section
-		class="relative isolate mt-6 overflow-hidden border-y px-6 py-10 sm:mt-8 sm:px-10 sm:py-12 lg:mt-10 lg:px-16 lg:py-14"
+		class="relative isolate mt-4 overflow-hidden border-y px-6 py-10 sm:mt-5 sm:px-10 sm:py-12 lg:mt-6 lg:px-16 lg:py-14"
 		style:border-color="var(--border-soft)"
 		style:background="var(--page-bg)"
 	>
-		<div class="relative mx-auto flex min-h-[48vh] w-full max-w-7xl items-center">
-			<div class="grid w-full gap-12 lg:grid-cols-[minmax(0,1.25fr)_360px] lg:items-center">
+		<div
+			class="relative mx-auto flex min-h-[48vh] w-full max-w-7xl items-center"
+		>
+			<div
+				class="grid w-full gap-12 lg:grid-cols-[minmax(0,1.25fr)_360px] lg:items-center"
+			>
 				<div class="max-w-3xl">
 					<h1
 						class="text-5xl font-semibold leading-none tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl"
@@ -25,10 +54,11 @@
 						class="mt-6 max-w-2xl text-lg leading-8 sm:text-xl"
 						style:color="var(--muted-text)"
 					>
-						MORPH is an open-source robotics platform designed to grow with the learner.
-						Its modular system makes it easy to build, adapt, and experiment, while its
-						curriculum is tailored to different education levels so students can meet
-						robotics at the right depth.
+						MORPH is an open-source robotics platform designed to
+						grow with the learner. Its modular system makes it easy
+						to build, adapt, and experiment, while its curriculum is
+						tailored to different education levels so students can
+						meet robotics at the right depth.
 					</p>
 				</div>
 
@@ -43,7 +73,7 @@
 							style:background="var(--glass)"
 						>
 							<a
-								href="/control-hub"
+								href="/hub"
 								class="group flex w-full items-center justify-between rounded-[1.35rem] border px-5 py-5 text-left transition duration-200"
 								style:border-color="color-mix(in srgb, var(--accent) 32%, transparent)"
 								style:background="var(--accent-soft)"
@@ -64,7 +94,13 @@
 											stroke-linejoin="round"
 											aria-hidden="true"
 										>
-											<rect x="3.5" y="4.5" width="17" height="15" rx="3"></rect>
+											<rect
+												x="3.5"
+												y="4.5"
+												width="17"
+												height="15"
+												rx="3"
+											></rect>
 											<path d="M8 9h3"></path>
 											<path d="M8 13h3"></path>
 											<path d="M15.5 10.5h.01"></path>
@@ -73,9 +109,16 @@
 										</svg>
 									</span>
 									<span>
-										<span class="block text-xl font-semibold">Control Hub</span>
-										<span class="mt-1 block text-sm" style:color="var(--muted-text)">
-											Jump into the main MORPH command center.
+										<span
+											class="block text-xl font-semibold"
+											>MORPH Hub</span
+										>
+										<span
+											class="mt-1 block text-sm"
+											style:color="var(--muted-text)"
+										>
+											Jump into the main MORPH control
+											center.
 										</span>
 									</span>
 								</span>
@@ -116,15 +159,23 @@
 											stroke-linejoin="round"
 											aria-hidden="true"
 										>
-											<circle cx="12" cy="12" r="9"></circle>
+											<circle cx="12" cy="12" r="9"
+											></circle>
 											<path d="M12 10v5"></path>
 											<path d="M12 7.5h.01"></path>
 										</svg>
 									</span>
 									<span>
-										<span class="block text-xl font-semibold">Learn More</span>
-										<span class="mt-1 block text-sm" style:color="var(--muted-text)">
-											Explore the modular system, open-source tools, and curriculum.
+										<span
+											class="block text-xl font-semibold"
+											>Learn More</span
+										>
+										<span
+											class="mt-1 block text-sm"
+											style:color="var(--muted-text)"
+										>
+											Explore the modular system,
+											open-source tools, and curriculum.
 										</span>
 									</span>
 								</span>
@@ -158,13 +209,19 @@
 			style:border-color="var(--border-soft)"
 			style:background="var(--glass)"
 		>
-			<div class="text-sm font-semibold uppercase tracking-[0.2em]" style:color="var(--accent)">
+			<div
+				class="text-sm font-semibold uppercase tracking-[0.2em]"
+				style:color="var(--accent)"
+			>
 				Modular
 			</div>
-			<h2 class="mt-3 text-2xl font-semibold">Built to be reconfigured</h2>
+			<h2 class="mt-3 text-2xl font-semibold">
+				Built to be reconfigured
+			</h2>
 			<p class="mt-3 text-base leading-7" style:color="var(--muted-text)">
-				MORPH is designed as a flexible system, making it easier to adapt projects,
-				experiment with new ideas, and support different classroom goals.
+				MORPH is designed as a flexible system, making it easier to
+				adapt projects, experiment with new ideas, and support different
+				classroom goals.
 			</p>
 		</div>
 
@@ -173,13 +230,17 @@
 			style:border-color="var(--border-soft)"
 			style:background="var(--glass)"
 		>
-			<div class="text-sm font-semibold uppercase tracking-[0.2em]" style:color="var(--accent)">
+			<div
+				class="text-sm font-semibold uppercase tracking-[0.2em]"
+				style:color="var(--accent)"
+			>
 				Open Source
 			</div>
 			<h2 class="mt-3 text-2xl font-semibold">Made to be explored</h2>
 			<p class="mt-3 text-base leading-7" style:color="var(--muted-text)">
-				Because MORPH is open source, learners and educators can look under the hood,
-				modify the platform, and build on top of it with confidence.
+				Because MORPH is open source, learners and educators can look
+				under the hood, modify the platform, and build on top of it with
+				confidence.
 			</p>
 		</div>
 
@@ -188,13 +249,17 @@
 			style:border-color="var(--border-soft)"
 			style:background="var(--glass)"
 		>
-			<div class="text-sm font-semibold uppercase tracking-[0.2em]" style:color="var(--accent)">
+			<div
+				class="text-sm font-semibold uppercase tracking-[0.2em]"
+				style:color="var(--accent)"
+			>
 				Curriculum
 			</div>
 			<h2 class="mt-3 text-2xl font-semibold">Tailored to every level</h2>
 			<p class="mt-3 text-base leading-7" style:color="var(--muted-text)">
-				MORPH includes curriculum paths shaped for different education levels, helping
-				learners progress from first concepts to more advanced robotics work.
+				MORPH includes curriculum paths shaped for different education
+				levels, helping learners progress from first concepts to more
+				advanced robotics work.
 			</p>
 		</div>
 	</section>

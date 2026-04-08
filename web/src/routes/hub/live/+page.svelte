@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+    import LidarView from "$lib/components/LidarView.svelte";
+    import WASDController from "$lib/components/WASDController.svelte";
 	import { robotConnection } from "$lib/robot-connection.svelte";
 
 	function disconnect() {
 		robotConnection.disconnect();
-		void goto("/control-hub");
+		void goto("/hub");
 	}
 
 	$effect(() => {
 		if (robotConnection.status !== "connected" || !robotConnection.client) {
-			void goto("/control-hub");
+			void goto("/hub");
 		}
 	});
 </script>
@@ -48,7 +50,7 @@
 
 				<div class="flex gap-3">
 					<a
-						href="/control-hub"
+						href="/hub"
 						class="rounded-2xl px-4 py-3 text-sm font-medium"
 						style:background="var(--surface-soft)"
 					>
@@ -137,5 +139,7 @@
 				{/if}
 			</div>
 		</section>
+		<LidarView/>
+		<WASDController/>
 	</div>
 </div>

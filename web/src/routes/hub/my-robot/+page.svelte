@@ -238,7 +238,7 @@
 		try {
 			const connected = await robotConnection.connect(host);
 			if (connected) {
-				await goto("/control-hub/live");
+				await goto("/hub/live");
 			}
 		} finally {
 			isConnecting = false;
@@ -255,7 +255,7 @@
 </script>
 
 <svelte:head>
-	<title>Control Hub | MORPH</title>
+	<title>My Robot | MORPH</title>
 	<meta
 		name="description"
 		content="Connect to a MORPH device from the Control Hub."
@@ -266,7 +266,7 @@
 	class="flex min-h-dvh items-center justify-center px-6 py-6 sm:px-10 sm:py-8 lg:px-16 lg:py-10"
 >
 	<section
-		class="flex min-h-[70vh] w-full max-w-[42rem] flex-col rounded-4xl border p-6 sm:p-8 lg:p-10"
+		class="flex min-h-[70vh] w-full max-w-2xl flex-col rounded-4xl border p-6 sm:p-8 lg:p-10"
 		style:border-color="var(--border-soft)"
 		style:background="var(--surface-solid)"
 	>

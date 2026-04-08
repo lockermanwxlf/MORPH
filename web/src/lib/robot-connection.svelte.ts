@@ -1,4 +1,5 @@
-import { FoxgloveClient } from "../foxglove/client";
+import type { FoxgloveClient } from "$lib/foxglove/client.js";
+import { createContext } from "svelte";
 
 export type ConnectionStatus =
 	| "idle"
@@ -49,6 +50,7 @@ class RobotConnectionState {
 		this.error = "";
 		this.advertisedTopics = [];
 
+		const { FoxgloveClient } = await import("$lib/foxglove/client.js");
 		const client = new FoxgloveClient(normalizedHost);
 		this.client = client;
 		client.onChannelsChanged = (topics) => {
@@ -95,3 +97,5 @@ class RobotConnectionState {
 }
 
 export const robotConnection = new RobotConnectionState();
+
+export const [getRobotConnectionContext, setRobotConnectionContext] = createContext<RobotConnectionState>();

@@ -1,5 +1,6 @@
 import { parseCdrOccupancyGrid } from "./cdr/occupancy-grid.ts";
 import { parseCdrString } from "./cdr/string.ts";
+import type { OccupancyGrid } from "./types/occupancy-grid.ts";
 import { twistStampedFrame, type TwistStamped } from "./types/twist-stamped.ts";
 
 interface StringMessage {
@@ -26,6 +27,16 @@ interface StatusMessage extends StringMessage {
 
 const TOPICS_TO_SUBSCRIBE = ["/map"];
 
+export type InTopic =
+	| "map";
+
+export interface TopicPayloads {
+	"map": OccupancyGrid;
+}
+
+type OutTopic =
+	| "diff_drive_base/cmd_vel";
+
 function toFoxgloveWebSocketUrl(host: string): string {
 	if (host.startsWith("ws://") || host.startsWith("wss://")) {
 		return host;
@@ -44,24 +55,46 @@ function toFoxgloveWebSocketUrl(host: string): string {
 	return `ws://${host}:8765`;
 }
 
+type Callback<T extends InTopic> = (payload: TopicPayloads[T]) => void;
+
 export class FoxgloveClient {
 	host: string;
 	socket: WebSocket | null;
 	channelInfo: Map<number, Channel>;
-	subscribedTopics: Map<number, string>;
+	subscribedTopics: Map<string, number>;
 	subscriptionIdToChannelId: Map<number, number>;
 	onOpen?: () => void;
 	onClose?: (event: CloseEvent) => void;
 	onError?: (event: Event) => void;
 	onStatus?: (status: StatusMessage) => void;
 	onChannelsChanged?: (topics: string[]) => void;
+	topicCallbacks: Map<InTopic, Callback<InTopic>[]>;
+	outTopicToChannelId: Map<OutTopic, number>;
 
 	constructor(host: string) {
 		this.host = host;
 		this.socket = null;
 		this.channelInfo = new Map();
-		this.subscribedTopics = new Map<number, string>();
+		this.subscribedTopics = new Map<string, number>();
 		this.subscriptionIdToChannelId = new Map<number, number>();
+		this.topicCallbacks = new Map<InTopic, Callback<InTopic>[]>();
+		this.outTopicToChannelId = new Map<OutTopic, number>();
+	}
+
+	addCallback<T extends InTopic>(topic: T, callback: (payload: TopicPayloads[T]) => void) {
+		if (!this.topicCallbacks.has(topic)) {
+			this.topicCallbacks.set(topic, []);
+		}
+		this.topicCallbacks.get(topic)?.push(callback);
+	}
+
+	removeCallback<T extends InTopic>(topic: T, callback: (payload: TopicPayloads[T]) => void) {
+		const callbacks = this.topicCallbacks.get(topic);
+		if (!callbacks) return;
+		this.topicCallbacks.set(
+			topic,
+			callbacks.filter((cb) => cb !== callback),
+		);
 	}
 
 	connect(): Promise<void> {
@@ -118,32 +151,67 @@ export class FoxgloveClient {
 	subscribeToChannel(
 		channelId: number,
 		topic: string,
-		encoding: "json" | "cdr",
 	) {
-		const subcriptionId = this.subscribedTopics.size + 1;
+		if (this.subscribedTopics.has(topic)) return;
+
+		const subscriptionId = this.subscribedTopics.size + 1;
 		const msg = {
 			op: "subscribe",
 			subscriptions: [
 				{
-					id: subcriptionId,
-					channelId,
-					topic,
-					encoding,
+					id: subscriptionId,
+					channelId
 				},
 			],
 		};
 		this.socket?.send(JSON.stringify(msg));
-		this.subscribedTopics.set(subcriptionId, topic);
-		this.subscriptionIdToChannelId.set(subcriptionId, channelId);
+		this.subscribedTopics.set(topic, subscriptionId);
+		this.subscriptionIdToChannelId.set(subscriptionId, channelId);
 	}
+
+	unsubscribeFromChannel(topic: string) {
+		const subscriptionId = this.subscribedTopics.get(topic);
+		if (!subscriptionId) return;
+
+		const msg = {
+			op: "unsubscribe",
+			subscriptionIds: [subscriptionId],
+		};
+		this.socket?.send(JSON.stringify(msg));
+		this.subscribedTopics.delete(topic);
+		this.subscriptionIdToChannelId.delete(subscriptionId);
+	}
+
+
 
 	sendTwistStamped(
 		twistStamped: TwistStamped,
-		channelId: number,
-		frameId: string,
+		channelId: number = 1,
+		frameId: string = "base_link",
 	) {
+		if (!this.outTopicToChannelId.has("diff_drive_base/cmd_vel")) {
+			this.advertiseTopic("diff_drive_base/cmd_vel", "json", "geometry_msgs/msg/TwistStamped");
+		}
 		const frame = twistStampedFrame(twistStamped, channelId, frameId);
 		this.socket?.send(frame);
+	}
+
+	advertiseTopic(topic: OutTopic, encoding: "json" | "cdr", schemaName: string) {
+		if (this.outTopicToChannelId.has(topic)) return;
+		const id = this.channelInfo.size + 1;
+		const msg = {
+			op: "advertise",
+			channels: [
+				{
+					id: id,
+					topic,
+					encoding,
+					schemaName,
+				},
+			],
+		};
+		this.socket?.send(JSON.stringify(msg));
+		this.outTopicToChannelId.set(topic, id);
 	}
 
 	private async handleStringMessage(message: string) {
@@ -157,7 +225,6 @@ export class FoxgloveClient {
 						this.subscribeToChannel(
 							channel.id,
 							channel.topic,
-							channel.encoding,
 						);
 					}
 				}
@@ -172,6 +239,14 @@ export class FoxgloveClient {
 				this.onStatus?.(data as StatusMessage);
 				break;
 			}
+			case "serverInfo": {
+				console.log("Connected to Foxglove server:", data);
+				break;
+			}
+			case "advertiseServices": {
+				console.log("Advertised services:", data);
+				break;
+			};
 			default: {
 				console.warn(`Unknown message op: ${data.op}`);
 			}
@@ -193,20 +268,20 @@ export class FoxgloveClient {
 		}
 		let offset = 1;
 
-		const subscriptonOrChannelId = view.getUint32(offset, true);
+		const subscriptionId = view.getUint32(offset, true);
 		offset += 4;
 		const tsNs = view.getBigUint64(offset, true);
 		offset += 8;
 		const payload = new Uint8Array(view.buffer, view.byteOffset + offset);
 
 		const channelId =
-			this.subscriptionIdToChannelId.get(subscriptonOrChannelId) ||
-			subscriptonOrChannelId;
-
+			this.subscriptionIdToChannelId.get(subscriptionId) ||
+			subscriptionId;
 		const channelInfo = this.channelInfo.get(channelId);
 		if (!channelInfo) {
 			return;
 		}
+
 		switch (channelInfo.schemaName) {
 			case "std_msgs/msg/String": {
 				const data = parseCdrString(payload);
@@ -221,6 +296,7 @@ export class FoxgloveClient {
 			}
 			default: {
 				console.warn(`Unknown schema: ${channelInfo.schemaName}`);
+				return;
 			}
 		}
 	}
