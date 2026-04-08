@@ -3,12 +3,14 @@
     import { getRobotConnectionContext } from "$lib/robot-connection.svelte.js";
     const connection = getRobotConnectionContext();
     let canvas = $state<HTMLCanvasElement>();
+    let overlayCanvas = $state<HTMLCanvasElement>();
     let imgData: ImageData | null = null;
     $effect(() => {
-        if (!canvas || !connection.client) return;
+        if (!canvas || !overlayCanvas || !connection.client) return;
         
         const ctx = canvas.getContext("2d", { alpha: false });
-        if (!ctx) return;
+        const overlayCtx = overlayCanvas.getContext("2d", { alpha: true });
+        if (!ctx || !overlayCtx) return;
 
         const renderMap = (newMap: OccupancyGrid) => {
             const { data, width: n, height: m, origin, resolution } = newMap;
@@ -19,6 +21,8 @@
             if (!imgData || imgData.width !== n || imgData.height !== m) {
                 canvas!.width = n;
                 canvas!.height = m;
+                overlayCanvas!.width = n;
+                overlayCanvas!.height = m;
                 imgData = ctx.createImageData(n, m);
             }
 
@@ -36,16 +40,17 @@
 
             ctx.putImageData(imgData, 0, 0);
 
-            // Draw origin marker
+            // Clear overlay and draw origin marker
+            overlayCtx.clearRect(0, 0, n, m);
             if (origin && !Number.isNaN(origin.x) && !Number.isNaN(origin.y)) {
                 // Origin defines where grid cell (0,0) is, so it maps to pixel (0,0)
                 const originPixelX = 0;
                 const originPixelY = 0;
 
-                ctx.fillStyle = "red";
-                ctx.beginPath();
-                ctx.arc(originPixelX, originPixelY, 8, 0, Math.PI * 2);
-                ctx.fill();
+                overlayCtx.fillStyle = "red";
+                overlayCtx.beginPath();
+                overlayCtx.arc(originPixelX, originPixelY, 8, 0, Math.PI * 2);
+                overlayCtx.fill();
             }
         };
 
@@ -59,8 +64,15 @@
     });
 </script>
 
-<canvas
-    bind:this={canvas}
-    class="w-full h-full object-contain"
-    style="image-rendering: pixelated;"
-></canvas>
+<div class="relative w-full h-full">
+    <canvas
+        bind:this={canvas}
+        class="w-full h-full object-contain"
+        style="image-rendering: pixelated;"
+    ></canvas>
+    <canvas
+        bind:this={overlayCanvas}
+        class="absolute top-0 left-0 w-full h-full object-contain"
+        style="image-rendering: pixelated;"
+    ></canvas>
+</div>
