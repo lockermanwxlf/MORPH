@@ -7,5 +7,10 @@ export interface OccupancyGrid {
 	resolution: number;
 	width: number;
 	height: number;
+	origin: {
+		x: number;
+		y: number;
+		z: number;
+	};
 	data: Int8Array;
 }

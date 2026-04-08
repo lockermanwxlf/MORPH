@@ -9,10 +9,10 @@
         
         const ctx = canvas.getContext("2d", { alpha: false });
         if (!ctx) return;
+
         const renderMap = (newMap: OccupancyGrid) => {
-            const { data, width: n, height: m } = newMap;
-            
-            if (!Array.isArray(data) || n <= 0 || m <= 0 || data.length !== n * m) {
+            const { data, width: n, height: m, origin, resolution } = newMap;
+            if (!data || n <= 0 || m <= 0 || data.length !== n * m) {
                 return;
             }
 
@@ -35,6 +35,18 @@
             }
 
             ctx.putImageData(imgData, 0, 0);
+
+            // Draw origin marker
+            if (origin && !Number.isNaN(origin.x) && !Number.isNaN(origin.y)) {
+                // Origin defines where grid cell (0,0) is, so it maps to pixel (0,0)
+                const originPixelX = 0;
+                const originPixelY = 0;
+
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.arc(originPixelX, originPixelY, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
         };
 
         const client = connection.client;

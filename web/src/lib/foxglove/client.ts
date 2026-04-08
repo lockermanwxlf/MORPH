@@ -292,6 +292,7 @@ export class FoxgloveClient {
 			}
 			case "nav_msgs/msg/OccupancyGrid": {
 				const occupancyGrid = parseCdrOccupancyGrid(payload);
+				this.topicCallbacks.get("map")?.forEach((callback) => callback(occupancyGrid));
 				break;
 			}
 			default: {

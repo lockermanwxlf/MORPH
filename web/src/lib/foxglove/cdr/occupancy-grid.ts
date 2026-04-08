@@ -72,11 +72,19 @@ export function parseCdrOccupancyGrid(cdr: Uint8Array): OccupancyGrid {
 	const height = view.getUint32(offset, true);
 	offset += 4;
 
+	// info.origin (Pose)
 	// Pose contains float64 members, so align to 8 bytes before skipping origin.
 	offset = alignOffset(offset, 8);
+	offset += 4 // idk why but needed
 
-	// info.origin (Pose)
-	offset += 56; // Skip info.origin
+	const originX = view.getFloat64(offset, true);
+	offset += 8;
+	const originY = view.getFloat64(offset, true);
+	offset += 8;
+	const originZ = view.getFloat64(offset, true);
+	offset += 8;
+	offset += 32; // skip orientation
+
 
 	offset = alignOffset(offset, 4);
 
@@ -103,6 +111,11 @@ export function parseCdrOccupancyGrid(cdr: Uint8Array): OccupancyGrid {
 		stamp: {
 			sec: stampSeconds,
 			nanosec: stampNs,
+		},
+		origin: {
+			x: originX,
+			y: originY,
+			z: originZ
 		},
 		frameId,
 		resolution,
