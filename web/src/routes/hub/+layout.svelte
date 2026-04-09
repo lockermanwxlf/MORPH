@@ -54,7 +54,7 @@
 		>
 			hi
 		</header>
-		<main class="flex-1 overflow-y-auto rounded-r-2xl content">
+		<main class="flex-1 overflow-y-auto rounded-r-2xl content flex flex-col">
 			{@render children()}
 		</main>
 	</div>

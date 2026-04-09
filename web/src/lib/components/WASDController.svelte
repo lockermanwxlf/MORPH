@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { TwistStamped } from "$lib/foxglove/types/twist-stamped.ts";
-    import { getRobotConnectionContext } from "$lib/robot-connection.svelte.ts";
+    import type { TwistStamped } from "../foxglove/types/twist-stamped.ts";
+    import { getRobotConnectionContext } from "$lib/robot-connection.svelte";
 
     let keyboardState = $state({
         w: false,
