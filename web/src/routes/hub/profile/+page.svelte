@@ -28,7 +28,9 @@
 			<div class="flex flex-col gap-3">
 				<a
 					href="/login"
-					class="w-full text-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+					class="w-full text-center font-bold py-2 px-4 rounded transition-transform duration-150 hover:scale-101 active:scale-95"
+					style:background="var(--accent)"
+					style:color="var(--surface-solid)"
 				>
 					Sign in
 				</a>
@@ -73,7 +75,9 @@
 
 			<button
 				type="submit"
-				class="mt-5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+				class="mt-5 font-bold py-2 px-4 rounded transition-transform duration-150 hover:scale-105 active:scale-95"
+				style:background="var(--accent)"
+				style:color="var(--surface-solid)"
 			>
 				Save profile
 			</button>
