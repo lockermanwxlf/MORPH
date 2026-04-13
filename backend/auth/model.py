@@ -3,6 +3,7 @@ from typing import Annotated
 
 from azure.cosmos.aio import ContainerProxy
 from fastapi import Depends
+from pydantic import BaseModel, EmailStr
 
 from config import USERS_CONTAINER_NAME
 from cosmos import CosmosDatabase
@@ -17,6 +18,11 @@ class Token:
 @dataclass
 class TokenData:
     email = None
+
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
 
 
 @dataclass

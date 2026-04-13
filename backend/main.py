@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 import cosmos
+from auth.endpoints import router as auth_router
 
 
 @asynccontextmanager
@@ -15,3 +16,4 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth_router)
