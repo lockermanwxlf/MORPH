@@ -1,24 +1,24 @@
 from datetime import datetime, timedelta, timezone
 import os
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
-from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from pwdlib import PasswordHash
-from yaml import emit
+from psycopg.errors import UniqueViolation
 
-from auth.model import DbUser, User, UserRegister, UsersContainer, get_user_container
+from auth.model import DbUser, User, UserRegister, UsersConnection
 from config import TOKEN_DEFAULT_EXPIRY
 
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not JWT_SECRET_KEY:
+_jwt_secret_key = os.getenv("JWT_SECRET_KEY")
+if not _jwt_secret_key:
     if os.getenv("BUILD") == "production":
         raise RuntimeError("JWT_SECRET_KEY is undefined.")
     print("JWT_SECRET_KEY is undefined. Falling back to default in development build.")
-    JWT_SECRET_KEY = "805cc53d0c0b6967ad121acd209e24823eb2c1f30e6eecaee52a22c23b4ba990"
+    _jwt_secret_key = "805cc53d0c0b6967ad121acd209e24823eb2c1f30e6eecaee52a22c23b4ba990"
+JWT_SECRET_KEY: str = _jwt_secret_key
 JWT_ALGORITHM = "HS256"
 
 password_hash = PasswordHash.recommended()
@@ -38,17 +38,22 @@ async def get_password_hash(password):
     return await run_in_threadpool(password_hash.hash, password)
 
 
-async def get_user(users: UsersContainer, email: str):
-    try:
-        user = await users.read_item(item=email, partition_key=email)
-        return DbUser(**user)
-    except CosmosResourceNotFoundError:
+async def get_user(users: UsersConnection, email: str):
+    row = await run_in_threadpool(
+        users.execute,
+        "SELECT email, password_hash FROM users WHERE email = %s",
+        (email,),
+    )
+    user_row = await run_in_threadpool(row.fetchone)
+    if not user_row:
         return None
+    user = cast(dict[str, str], user_row)
+    return DbUser(**user)
 
 
 async def authenticate_user(
-    users: UsersContainer, email: str, password: str
-) -> User | bool:
+    users: UsersConnection, email: str, password: str
+) -> DbUser | Literal[False]:
     user = await get_user(users, email)
     if not user:
         await verify_password(password, DUMMY_HASH)
@@ -71,7 +76,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 AccessToken = Annotated[str, Depends(oauth2_scheme)]
 
 
-async def get_current_user(token: AccessToken, users: UsersContainer) -> User:
+async def get_current_user(token: AccessToken, users: UsersConnection) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -91,14 +96,14 @@ async def get_current_user(token: AccessToken, users: UsersContainer) -> User:
     return user
 
 
-CurrentUser = Annotated[User, get_current_user]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register")
 async def register(
-    users: UsersContainer,
+    users: UsersConnection,
     user_data: UserRegister = Body(...),
 ):
     existing_user = await get_user(users, user_data.email)
@@ -110,13 +115,23 @@ async def register(
 
     password_hash_val = await get_password_hash(user_data.password)
     user = DbUser(email=user_data.email, password_hash=password_hash_val)
-    await users.upsert_item(user.__dict__)
+    try:
+        await run_in_threadpool(
+            users.execute,
+            "INSERT INTO users (email, password_hash) VALUES (%s, %s)",
+            (user.email, user.password_hash),
+        )
+    except UniqueViolation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already exists",
+        )
     return {"message": "User created successfully"}
 
 
 @router.post("/token")
 async def login(
-    users: UsersContainer,
+    users: UsersConnection,
     form_data: OAuth2PasswordRequestForm = Depends(),
 ):
     user = await authenticate_user(users, form_data.username, form_data.password)

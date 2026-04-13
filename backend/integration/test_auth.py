@@ -1,12 +1,10 @@
 import sys
 from pathlib import Path
-
-from azure.cosmos import CosmosClient
-import pytest
-import pytest_asyncio
-from httpx import AsyncClient
-from testcontainers.cosmosdb import CosmosDBNoSQLEndpointContainer
 import os
+
+import pytest
+from fastapi.testclient import TestClient
+from testcontainers.postgres import PostgresContainer
 
 root = Path(__file__).parent.parent
 if str(root) not in sys.path:
@@ -14,48 +12,98 @@ if str(root) not in sys.path:
 from main import app
 
 
-@pytest_asyncio.fixture(scope="session")
-async def cosmos_container():
-    with CosmosDBNoSQLEndpointContainer() as emulator:
-        client = CosmosClient(
-            url=emulator.url, credential=emulator.key, connection_verify=False
+@pytest.fixture(scope="session")
+def postgres_container():
+    with PostgresContainer("postgres:16") as container:
+        raw_url = container.get_connection_url()
+        os.environ["DATABASE_URL"] = raw_url.replace(
+            "postgresql+psycopg2://", "postgresql://", 1
         )
-        db = client.create_database_if_not_exists("test")
         yield container
 
 
-@pytest_asyncio.fixture(scope="session")
-async def anyio_event_loop():
-    return None  # Use default anyio loop
+@pytest.fixture()
+def client(postgres_container):
+    with TestClient(app) as test_client:
+        yield test_client
 
 
-@pytest_asyncio.fixture(scope="session")
-async def client(cosmos_container):
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
-
-
-@pytest.mark.asyncio
-async def test_register_and_login(client):
+def test_register_and_login(client):
     # Test Registration
     payload = {"email": "test@example.com", "password": "securepassword123"}
-    response = await client.post("/auth/register", json=payload)
+    response = client.post("/auth/register", json=payload)
     assert response.status_code == 200
     assert response.json() == {"message": "User created successfully"}
 
     # Test Duplicate Registration
-    response = await client.post("/auth/register", json=payload)
+    response = client.post("/auth/register", json=payload)
     assert response.status_code == 400
     assert response.json()["detail"] == "User already exists"
 
     # Test Login
     login_payload = {"username": "test@example.com", "password": "securepassword123"}
-    # Note: OAuth2PasswordRequestForm expects form data, not JSON
-    response = await client.post("/auth/token", data=login_payload)
+    response = client.post("/auth/token", data=login_payload)
     assert response.status_code == 200
     assert "access_token" in response.json()
 
     # Test Login with wrong password
     login_payload["password"] = "wrongpassword"
-    response = await client.post("/auth/token", data=login_payload)
+    response = client.post("/auth/token", data=login_payload)
     assert response.status_code == 401
+
+
+def test_profile_and_lesson_completion(client):
+    payload = {"email": "student@example.com", "password": "securepassword123"}
+    register_response = client.post("/auth/register", json=payload)
+    assert register_response.status_code == 200
+
+    login_response = client.post(
+        "/auth/token",
+        data={"username": payload["email"], "password": payload["password"]},
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+    auth_header = {"Authorization": f"Bearer {token}"}
+
+    # Create or update profile
+    profile_response = client.put(
+        "/users/me/profile",
+        json={"grade_level": "6"},
+        headers=auth_header,
+    )
+    assert profile_response.status_code == 200
+    assert profile_response.json()["grade_level"] == "6"
+
+    # Fetch profile
+    get_profile_response = client.get("/users/me/profile", headers=auth_header)
+    assert get_profile_response.status_code == 200
+    assert get_profile_response.json() == {
+        "email": payload["email"],
+        "grade_level": "6",
+    }
+
+    # Mark lessons complete and verify duplicates are ignored
+    assert (
+        client.post(
+            "/progress/me/lessons/lesson-1/complete", headers=auth_header
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/progress/me/lessons/lesson-2/complete", headers=auth_header
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/progress/me/lessons/lesson-1/complete", headers=auth_header
+        ).status_code
+        == 200
+    )
+
+    completed_response = client.get(
+        "/progress/me/lessons/completed", headers=auth_header
+    )
+    assert completed_response.status_code == 200
+    assert completed_response.json() == {"lesson_ids": ["lesson-1", "lesson-2"]}
