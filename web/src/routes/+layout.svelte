@@ -4,4 +4,6 @@
 	const { children } = $props();
 </script>
 
-{@render children()}
+<div class="min-h-dvh min-w-dvw flex flex-col bg-(--page-bg)">
+	{@render children()}
+</div>

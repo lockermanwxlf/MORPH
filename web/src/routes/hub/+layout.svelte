@@ -50,9 +50,16 @@
 	</aside>
 	<div class="flex flex-col flex-1">
 		<header
-			class="flex items-center px-4 border-(--border-soft) border-b min-h-16 w-full"
+			class="flex items-center justify-end px-4 border-(--border-soft) border-b min-h-16 w-full"
 		>
-			hi
+			<div class="flex gap-6 me-6">
+				<a href="/login">
+					Sign In
+				</a>
+				<a href="/register">
+					Register
+				</a>
+			</div>
 		</header>
 		<main class="flex-1 overflow-y-auto rounded-r-2xl content flex flex-col">
 			{@render children()}
