@@ -2,7 +2,14 @@
 	import { page } from "$app/state";
     import { robotConnection, setRobotConnectionContext } from "$lib/robot-connection.svelte.js";
 
-	const { children } = $props();
+	type LayoutData = {
+		user: {
+			email: string | null;
+			gradeLevel: string | null;
+		};
+	};
+
+	const { children, data } = $props<{ children: any; data: LayoutData }>();
 	const routes = [
 		{ name: "Home", href: "/hub/home" },
 		{ name: "My Robot", href: "/hub/my-robot" },
@@ -52,13 +59,18 @@
 		<header
 			class="flex items-center justify-end px-4 border-(--border-soft) border-b min-h-16 w-full"
 		>
-			<div class="flex gap-6 me-6">
-				<a href="/login">
-					Sign In
-				</a>
-				<a href="/register">
-					Register
-				</a>
+			<div class="flex gap-6 me-6 items-center">
+				{#if data.user.email}
+					<span class="text-sm opacity-75">{data.user.email}</span>
+					<form method="POST" action="/logout">
+						<button type="submit" class="text-sm font-medium hover:underline">
+							Sign out
+						</button>
+					</form>
+				{:else}
+					<a href="/login" class="text-sm font-medium hover:underline">Sign in</a>
+					<a href="/register" class="text-sm font-medium hover:underline">Register</a>
+				{/if}
 			</div>
 		</header>
 		<main class="flex-1 overflow-y-auto rounded-r-2xl content flex flex-col">
