@@ -68,19 +68,26 @@ def test_profile_and_lesson_completion(client):
     # Create or update profile
     profile_response = client.put(
         "/users/me/profile",
-        json={"grade_level": "6"},
+        json={"grade_level": "6-12"},
         headers=auth_header,
     )
     assert profile_response.status_code == 200
-    assert profile_response.json()["grade_level"] == "6"
+    assert profile_response.json()["grade_level"] == "6-12"
 
     # Fetch profile
     get_profile_response = client.get("/users/me/profile", headers=auth_header)
     assert get_profile_response.status_code == 200
     assert get_profile_response.json() == {
         "email": payload["email"],
-        "grade_level": "6",
+        "grade_level": "6-12",
     }
+
+    invalid_profile_response = client.put(
+        "/users/me/profile",
+        json={"grade_level": "6"},
+        headers=auth_header,
+    )
+    assert invalid_profile_response.status_code == 422
 
     # Mark lessons complete and verify duplicates are ignored
     assert (

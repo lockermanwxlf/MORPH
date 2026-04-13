@@ -58,6 +58,22 @@ def init_postgres() -> None:
         )
         conn.execute(
             """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'user_profiles_grade_level_check'
+                ) THEN
+                    ALTER TABLE user_profiles
+                    ADD CONSTRAINT user_profiles_grade_level_check
+                    CHECK (grade_level IN ('k-5', '6-12', 'uni'));
+                END IF;
+            END $$;
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS user_lesson_completions (
                 user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
                 lesson_id TEXT NOT NULL,
