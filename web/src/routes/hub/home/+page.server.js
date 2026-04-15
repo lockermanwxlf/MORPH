@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { getBackendUrl } from "$lib/server/backend-api.js";
+import { getPublishedLessonCount } from "$lib/lessons/catalog.js";
 
-const TOTAL_LESSONS = 1;
+const TOTAL_LESSONS = getPublishedLessonCount();
 
 export async function load({ cookies, fetch }) {
     const token = cookies.get("auth_token");

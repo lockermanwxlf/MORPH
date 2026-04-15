@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from "$app/state";
+    import { getLessonDefinitionBySlug } from "$lib/lessons/catalog.ts";
     import { robotConnection, setRobotConnectionContext } from "$lib/robot-connection.svelte.js";
 
 	type LayoutData = {
@@ -17,6 +18,13 @@
 		{ name: "Profile", href: "/hub/profile" },
 	];
 
+	const lessonName = $derived.by(() => {
+		const lessonSlug = page.route.id === "/hub/lesson/[slug]" ? page.params.slug : null;
+		if (!lessonSlug) return null;
+		const definition = getLessonDefinitionBySlug(lessonSlug);
+		return definition ? definition.title : null;
+	})
+	
 	setRobotConnectionContext(robotConnection);
 </script>
 
@@ -59,6 +67,10 @@
 		<header
 			class="flex items-center justify-end px-4 border-(--border-soft) border-b min-h-16 w-full"
 		>
+			{#if lessonName}
+				<h1 class="text-lg font-bold">{lessonName}</h1>
+				<div class="flex-1"></div>
+			{/if}
 			<div class="flex gap-6 me-6 items-center">
 				{#if data.user.email}
 					<span class="text-sm opacity-75">{data.user.email}</span>

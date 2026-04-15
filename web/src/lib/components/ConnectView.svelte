@@ -4,6 +4,16 @@
 	import type { TransitionConfig } from "svelte/transition";
 	import { robotConnection } from "$lib/robot-connection.svelte";
 
+	type Props = {
+		showProceedWithoutRobot?: boolean;
+		onProceedWithoutRobot?: () => void;
+	};
+
+	let {
+		showProceedWithoutRobot = false,
+		onProceedWithoutRobot,
+	}: Props = $props();
+
 	const WIFI_PROVISIONING_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3";
 	const NETWORK_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd";
 
@@ -399,7 +409,18 @@
 					</p>
 				{/if}
 
-				<div class="mt-8 flex justify-end">
+				<div class="mt-8 flex items-center justify-end gap-3">
+					{#if showProceedWithoutRobot}
+						<button
+							type="button"
+							class="text-sm mr-4 font-medium transition hover:underline"
+							style:background="transparent"
+							style:color="var(--muted-text)"
+							onclick={() => onProceedWithoutRobot?.()}
+						>
+							Proceed without robot
+						</button>
+					{/if}
 					<button
 						type="submit"
 						class="rounded-full px-6 py-3 text-sm font-semibold transition"
