@@ -1,6 +1,8 @@
 import { parseCdrOccupancyGrid } from "./cdr/occupancy-grid.ts";
+import { parsePoseWithCovariance, parsePoseWithCovarianceStamped } from "./cdr/pose.ts";
 import { parseCdrString } from "./cdr/string.ts";
 import type { OccupancyGrid } from "./types/occupancy-grid.ts";
+import type { PoseWithCovariance } from "./types/pose.ts";
 import { twistStampedFrame, type TwistStamped } from "./types/twist-stamped.ts";
 
 interface StringMessage {
@@ -25,13 +27,15 @@ interface StatusMessage extends StringMessage {
 	message?: string;
 }
 
-const TOPICS_TO_SUBSCRIBE = ["/map"];
+const TOPICS_TO_SUBSCRIBE = ["/map", "/pose"];
 
 export type InTopic =
-	| "map";
+	| "map"
+	| "pose";
 
 export interface TopicPayloads {
 	"map": OccupancyGrid;
+	"pose": PoseWithCovariance;
 }
 
 type OutTopic =
@@ -85,7 +89,7 @@ export class FoxgloveClient {
 		if (!this.topicCallbacks.has(topic)) {
 			this.topicCallbacks.set(topic, []);
 		}
-		this.topicCallbacks.get(topic)?.push(callback);
+		(this.topicCallbacks.get(topic) as Callback<T>[])?.push(callback);
 	}
 
 	removeCallback<T extends InTopic>(topic: T, callback: (payload: TopicPayloads[T]) => void) {
@@ -281,7 +285,7 @@ export class FoxgloveClient {
 		if (!channelInfo) {
 			return;
 		}
-
+		console.log(channelInfo);
 		switch (channelInfo.schemaName) {
 			case "std_msgs/msg/String": {
 				const data = parseCdrString(payload);
@@ -293,6 +297,16 @@ export class FoxgloveClient {
 			case "nav_msgs/msg/OccupancyGrid": {
 				const occupancyGrid = parseCdrOccupancyGrid(payload);
 				this.topicCallbacks.get("map")?.forEach((callback) => callback(occupancyGrid));
+				break;
+			}
+			case "geometry_msgs/msg/PoseWithCovariance": {
+				const pose = parsePoseWithCovariance(payload);
+				this.topicCallbacks.get("pose")?.forEach((callback) => callback(pose));
+				break;
+			}
+			case "geometry_msgs/msg/PoseWithCovarianceStamped": {
+				const pose = parsePoseWithCovarianceStamped(payload);
+				this.topicCallbacks.get("pose")?.forEach((callback) => callback(pose));
 				break;
 			}
 			default: {

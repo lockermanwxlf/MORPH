@@ -1,10 +1,15 @@
 <script lang="ts">
     import type { OccupancyGrid } from "$lib/foxglove/types/occupancy-grid.js";
+    import type { PoseWithCovariance } from "$lib/foxglove/types/pose.js";
     import { getRobotConnectionContext } from "$lib/robot-connection.svelte.js";
     const connection = getRobotConnectionContext();
     let canvas = $state<HTMLCanvasElement>();
     let overlayCanvas = $state<HTMLCanvasElement>();
     let imgData: ImageData | null = null;
+
+    let map: OccupancyGrid | null = null;
+    let pose: PoseWithCovariance | null = null;
+    
     $effect(() => {
         if (!canvas || !overlayCanvas || !connection.client) return;
         
@@ -12,9 +17,16 @@
         const overlayCtx = overlayCanvas.getContext("2d", { alpha: true });
         if (!ctx || !overlayCtx) return;
 
-        const renderMap = (newMap: OccupancyGrid) => {
-            const { data, width: n, height: m, origin, resolution } = newMap;
-            if (!data || n <= 0 || m <= 0 || data.length !== n * m) {
+        const renderMap = () => {
+            if (!map) return;
+            const { data, width: n, height: m, origin, resolution } = map;
+            if (
+                !data ||
+                n <= 0 ||
+                m <= 0 ||
+                resolution <= 0 ||
+                data.length !== n * m
+            ) {
                 return;
             }
 
@@ -31,7 +43,15 @@
             for (let i = 0; i < data.length; i++) {
                 const value = data[i];
                 const color = value < 0 ? 127 : Math.max(0, Math.min(255, Math.round(value * 2.55)));
-                const pos = i << 2;
+
+                // Occupancy grid is row-major from left->right, bottom->top.
+                // Canvas pixels are row-major from left->right, top->bottom.
+                const gridX = i % n;
+                const gridYFromBottom = Math.floor(i / n);
+                const canvasY = m - 1 - gridYFromBottom;
+                const pixelIndex = canvasY * n + gridX;
+                const pos = pixelIndex << 2;
+
                 pixels[pos] = color;
                 pixels[pos + 1] = color;
                 pixels[pos + 2] = color;
@@ -40,26 +60,75 @@
 
             ctx.putImageData(imgData, 0, 0);
 
-            // Clear overlay and draw origin marker
-            overlayCtx.clearRect(0, 0, n, m);
-            if (origin && !Number.isNaN(origin.x) && !Number.isNaN(origin.y)) {
-                // Origin defines where grid cell (0,0) is, so it maps to pixel (0,0)
-                const originPixelX = 0;
-                const originPixelY = 0;
+            const isFiniteNumber = (value: number) => Number.isFinite(value);
+            const canProject =
+                !!origin &&
+                isFiniteNumber(origin.x) &&
+                isFiniteNumber(origin.y) &&
+                isFiniteNumber(resolution) &&
+                resolution > 0;
 
-                overlayCtx.fillStyle = "red";
+            const worldToCanvas = (worldX: number, worldY: number) => {
+                if (!canProject || !origin) return null;
+
+                // Map origin is the bottom-left map corner in world coordinates.
+                const gridX = (worldX - origin.x) / resolution;
+                const gridYFromBottom = (worldY - origin.y) / resolution;
+                const canvasY = m - 1 - gridYFromBottom;
+
+                return { x: gridX, y: canvasY };
+            };
+
+            const drawMarker = (x: number, y: number, color: string, radius = 6) => {
+                overlayCtx.fillStyle = color;
                 overlayCtx.beginPath();
-                overlayCtx.arc(originPixelX, originPixelY, 8, 0, Math.PI * 2);
+                overlayCtx.arc(x, y, radius, 0, Math.PI * 2);
                 overlayCtx.fill();
+            };
+
+            // Clear overlay and draw reference markers
+            overlayCtx.clearRect(0, 0, n, m);
+
+            // Map origin (bottom-left of the map in world frame)
+            const mapOriginPixel = worldToCanvas(origin.x, origin.y);
+            if (mapOriginPixel) {
+                drawMarker(mapOriginPixel.x, mapOriginPixel.y, "#3b82f6", 5);
+            }
+
+            // World-frame origin (0, 0), which may be inside the map bounds.
+            const worldOriginPixel = worldToCanvas(0, 0);
+            if (worldOriginPixel) {
+                drawMarker(worldOriginPixel.x, worldOriginPixel.y, "#ef4444", 6);
+            }
+
+            // Robot pose is expressed in world frame, so project from world->map->canvas.
+            if (pose?.pose?.position) {
+                const posePixel = worldToCanvas(pose.pose.position.x, pose.pose.position.y);
+                if (posePixel) {
+                    drawMarker(posePixel.x, posePixel.y, "#22c55e", 6);
+                }
             }
         };
 
         const client = connection.client;
-        client?.addCallback("map", renderMap);
+
+        const onNewMap = (m: OccupancyGrid) => {
+            map = m;
+            renderMap();
+        };
+
+        const onNewPose = (p: PoseWithCovariance) => {
+            pose = p;
+            renderMap();
+        };
+        
+        client?.addCallback("map", onNewMap);
+        client?.addCallback("pose", onNewPose);
 
         // Cleanup function
         return () => {
-            client?.removeCallback("map", renderMap);
+            client?.removeCallback("map", onNewMap);
+            client?.removeCallback("pose", onNewPose);
         };
     });
 </script>
