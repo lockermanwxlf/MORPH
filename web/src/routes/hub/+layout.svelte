@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from "$app/state";
-    import { getLessonDefinitionBySlug } from "$lib/lessons/catalog.ts";
+	import { getLessonMetaBySlug } from "$lib/lessons/catalog.js";
     import { robotConnection, setRobotConnectionContext } from "$lib/robot-connection.svelte.js";
 
 	type LayoutData = {
@@ -19,9 +19,13 @@
 	];
 
 	const lessonName = $derived.by(() => {
-		const lessonSlug = page.route.id === "/hub/lesson/[slug]" ? page.params.slug : null;
+		const pathParts = page.url.pathname.split("/").filter(Boolean);
+		const lessonSlug =
+			pathParts[0] === "hub" && pathParts[1] === "lesson"
+				? pathParts[2] ?? null
+				: null;
 		if (!lessonSlug) return null;
-		const definition = getLessonDefinitionBySlug(lessonSlug);
+		const definition = getLessonMetaBySlug(lessonSlug);
 		return definition ? definition.title : null;
 	})
 	

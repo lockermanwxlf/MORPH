@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { getPublishedLessons } from "$lib/lessons/catalog.js";
+    import { lessonCatalog } from "$lib/lessons/catalog.js";
 
-    const lessons = getPublishedLessons();
+	const lessons = lessonCatalog;
 
 	function formatDifficulty(difficulty: string) {
         return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
@@ -24,9 +24,6 @@
 		>
 			<div class="flex items-center justify-between gap-3">
 				<h2 class="font-semibold text-lg">{lesson.title}</h2>
-				<span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full bg-(--surface-solid) text-(--accent)">
-					{formatDifficulty(lesson.difficulty)}
-				</span>
 			</div>
 			<p class="text-sm opacity-85">{lesson.description}</p>
 			<div class="flex flex-wrap gap-2 text-xs">
