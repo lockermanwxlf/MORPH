@@ -39,7 +39,7 @@ export function twistStampedFrame(
 	const dataStr = JSON.stringify(data);
 	const encoder = new TextEncoder();
 	const dataBytes = encoder.encode(dataStr);
-	const buffer = new ArrayBuffer(1 + 4 * dataBytes.length);
+	const buffer = new ArrayBuffer(1 + 4 + dataBytes.length);
 	const view = new DataView(buffer);
 	view.setUint8(0, 0x01);
 	view.setUint32(1, channelId, true);
