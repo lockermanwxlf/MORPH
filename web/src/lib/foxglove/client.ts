@@ -21,6 +21,11 @@ interface AdvertiseMessage extends StringMessage {
 	channels: Channel[];
 }
 
+interface UnadvertiseMessage extends StringMessage {
+    op: "unadvertise";
+    channelIds: number[];
+}
+
 interface StatusMessage extends StringMessage {
 	op: "status";
 	level?: string;
@@ -73,7 +78,8 @@ export class FoxgloveClient {
 	onStatus?: (status: StatusMessage) => void;
 	onChannelsChanged?: (topics: string[]) => void;
 	topicCallbacks: Map<InTopic, Callback<InTopic>[]>;
-	outTopicToChannelId: Map<OutTopic, number>;
+	outTopicToChannelId: Map<OutTopic, number>;s
+	private clientChannelIdCounter = 0;
 
 	constructor(host: string) {
 		this.host = host;
@@ -113,6 +119,8 @@ export class FoxgloveClient {
 		this.channelInfo.clear();
 		this.subscribedTopics.clear();
 		this.subscriptionIdToChannelId.clear();
+		this.outTopicToChannelId.clear();
+		this.clientChannelIdCounter = 0;
 
 		this.socket = new WebSocket(
 			toFoxgloveWebSocketUrl(this.host),
@@ -190,11 +198,15 @@ export class FoxgloveClient {
 
 	sendTwistStamped(
 		twistStamped: TwistStamped,
-		channelId: number = 1,
 		frameId: string = "base_link",
 	) {
 		if (!this.outTopicToChannelId.has("diff_drive_base/cmd_vel")) {
-			this.advertiseTopic("diff_drive_base/cmd_vel", "json", "geometry_msgs/msg/TwistStamped");
+			this.advertiseTopic("diff_drive_base/cmd_vel", "cdr", "geometry_msgs/msg/TwistStamped");
+		}
+		const channelId = this.outTopicToChannelId.get("diff_drive_base/cmd_vel");
+		if (!channelId) {
+			console.warn("Channel ID for diff_drive_base/cmd_vel not found");
+			return;
 		}
 		const frame = twistStampedFrame(twistStamped, channelId, frameId);
 		this.socket?.send(frame);
@@ -202,7 +214,9 @@ export class FoxgloveClient {
 
 	advertiseTopic(topic: OutTopic, encoding: "json" | "cdr", schemaName: string) {
 		if (this.outTopicToChannelId.has(topic)) return;
-		const id = this.channelInfo.size + 1;
+
+		this.clientChannelIdCounter += 1;
+		const id = this.clientChannelIdCounter;
 		const msg = {
 			op: "advertise",
 			channels: [
@@ -225,7 +239,7 @@ export class FoxgloveClient {
 				const advertisement = data as AdvertiseMessage;
 				for (const channel of advertisement.channels) {
 					this.channelInfo.set(channel.id, channel);
-					if (TOPICS_TO_SUBSCRIBE.includes(channel.topic)) {
+					if (TOPICS_TO_SUBSCRIBE.includes(channel.topic) && channel.encoding === "cdr") {
 						this.subscribeToChannel(
 							channel.id,
 							channel.topic,
@@ -239,6 +253,18 @@ export class FoxgloveClient {
 				);
 				break;
 			}
+			case "unadvertise": {
+                const unadvertisement = data as UnadvertiseMessage;
+                for (const channelId of unadvertisement.channelIds) {
+                    this.channelInfo.delete(channelId);
+                }
+                this.onChannelsChanged?.(
+                    Array.from(this.channelInfo.values())
+                        .map((channel) => channel.topic)
+                        .sort(),
+                );
+                break;
+            }
 			case "status": {
 				this.onStatus?.(data as StatusMessage);
 				break;
@@ -285,7 +311,6 @@ export class FoxgloveClient {
 		if (!channelInfo) {
 			return;
 		}
-		console.log(channelInfo);
 		switch (channelInfo.schemaName) {
 			case "std_msgs/msg/String": {
 				const data = parseCdrString(payload);
