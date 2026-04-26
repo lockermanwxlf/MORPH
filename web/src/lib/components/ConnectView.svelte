@@ -270,7 +270,7 @@
 </svelte:head>
 
 <div
-	class="flex min-h-dvh items-center justify-center px-6 py-6 sm:px-10 sm:py-8 lg:px-16 lg:py-10"
+	class="flex min-h-full items-center justify-center px-6 py-6 sm:px-10 sm:py-8 lg:px-16 lg:py-10"
 >
 	<section
 		class="flex min-h-[70vh] w-full max-w-2xl flex-col rounded-4xl border p-6 sm:p-8 lg:p-10"

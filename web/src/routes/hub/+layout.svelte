@@ -28,6 +28,10 @@
 		const definition = getLessonMetaBySlug(lessonSlug);
 		return definition ? definition.title : null;
 	})
+
+	const isMyRobotRoute = $derived.by(() =>
+		page.url.pathname.startsWith("/hub/my-robot"),
+	);
 	
 	setRobotConnectionContext(robotConnection);
 </script>
@@ -67,7 +71,7 @@
 			{/each}
 		</div>
 	</aside>
-	<div class="flex flex-col flex-1">
+	<div class="flex flex-col flex-1 min-h-0">
 		<header
 			class="flex items-center justify-end px-4 border-(--border-soft) border-b min-h-16 w-full"
 		>
@@ -89,7 +93,11 @@
 				{/if}
 			</div>
 		</header>
-		<main class="flex-1 overflow-y-auto rounded-r-2xl content flex flex-col">
+		<main
+			class="flex-1 min-h-0 content flex flex-col"
+			class:overflow-y-auto={!isMyRobotRoute}
+			class:rounded-r-2xl={!isMyRobotRoute}
+		>
 			{@render children()}
 		</main>
 	</div>

@@ -5,7 +5,7 @@
     const robotConnection = getRobotConnectionContext();
 </script>
 
-<div class="flex flex-col flex-1">
+<div class="flex flex-col flex-1 min-h-0">
     {#if robotConnection.status === "connected"}
         <header class="flex flex-row items-center gap-5 px-5 py-4 border-b" style:border-color="var(--border-soft)">
             <span>
@@ -23,7 +23,7 @@
             </button>
         </header>
     {/if}
-    <main class="overflow-y-auto content flex-1">
+    <main class="relative content flex-1 min-h-0">
         {@render children()}
     </main>
 </div>

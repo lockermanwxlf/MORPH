@@ -13,13 +13,27 @@ function parsePoseWithCovarianceFromView(
     const y = view.getFloat64(offset, true);
     offset += 8;
     const z = view.getFloat64(offset, true);
+    offset += 8;
 
-    console.log(x, y, z);
+    // Orientation quaternion
+    const qx = view.getFloat64(offset, true);
+    offset += 8;
+    const qy = view.getFloat64(offset, true);
+    offset += 8;
+    const qz = view.getFloat64(offset, true);
+    offset += 8;
+    const qw = view.getFloat64(offset, true);
 
     return {
         pose: {
             position: {
                 x, y, z
+            },
+            orientation: {
+                x: qx,
+                y: qy,
+                z: qz,
+                w: qw,
             }
         }
     };

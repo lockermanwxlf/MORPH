@@ -39,6 +39,7 @@
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
+		"@types/three": "^0.184.0",
 		"publint": "^0.3.17",
 		"svelte": "^5.54.0",
 		"svelte-check": "^4.4.2",
@@ -48,5 +49,8 @@
 	},
 	"keywords": [
 		"svelte"
-	]
+	],
+	"dependencies": {
+		"three": "^0.184.0"
+	}
 }
