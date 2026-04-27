@@ -62,13 +62,27 @@ bool SCSerial::begin(int baudRate, const char* serialPort)
     case 115200:
         CR_BAUDRATE = B115200;
         break;
+    case 230400:
+        CR_BAUDRATE = B230400;
+        break;
+    #ifdef B460800
+    case 460800:
+        CR_BAUDRATE = B460800;
+        break;
+    #endif
     case 500000:
         CR_BAUDRATE = B500000;
         break;
+    #ifdef B921600
+    case 921600:
+        CR_BAUDRATE = B921600;
+        break;
+    #endif
     case 1000000:
         CR_BAUDRATE = B1000000;
         break;
     default:
+		printf("unsupported serial speed %d, falling back to 115200\n", baudRate);
 		CR_BAUDRATE = B115200;
         break;
     }
@@ -120,10 +134,22 @@ int SCSerial::setBaudRate(int baudRate)
     case 230400:
         CR_BAUDRATE = B230400;
 	break;
+    #ifdef B460800
+    case 460800:
+        CR_BAUDRATE = B460800;
+        break;
+    #endif
     case 500000:
         CR_BAUDRATE = B500000;
         break;
+    #ifdef B921600
+    case 921600:
+        CR_BAUDRATE = B921600;
+        break;
+    #endif
     default:
+        printf("unsupported serial speed %d\n", baudRate);
+        return -1;
         break;
     }
     cfsetispeed(&curopt, CR_BAUDRATE);

@@ -1,5 +1,10 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="waveshare_servos">
+  <xacro:arg name="device_port" default="/dev/ttyUSB1"/>
+  <xacro:arg name="baud_rate" default="921600"/>
+  <xacro:arg name="io_timeout_ms" default="20"/>
+  <xacro:arg name="enable_sync_read" default="false"/>
+  <xacro:arg name="estimate_state_from_commands" default="true"/>
 
   <!-- Tunables: set to your real geometry -->
   <xacro:property name="wheel_radius" value="0.03175"/>      <!-- 3.1 cm -->
@@ -116,6 +121,11 @@
                                  front_left_joint_name="front_left_wheel_joint" front_left_id="2"
                                  front_right_joint_name="front_right_wheel_joint" front_right_id="1"
                                  back_left_joint_name="back_left_wheel_joint" back_left_id="4"
-                                 back_right_joint_name="back_right_wheel_joint" back_right_id="3"/>
+                                 back_right_joint_name="back_right_wheel_joint" back_right_id="3"
+                                 device_port="$(arg device_port)"
+                                 baud_rate="$(arg baud_rate)"
+                                 io_timeout_ms="$(arg io_timeout_ms)"
+                                 enable_sync_read="$(arg enable_sync_read)"
+                                 estimate_state_from_commands="$(arg estimate_state_from_commands)"/>
 
 </robot>

@@ -3,11 +3,16 @@
 
   <!-- Rebind arbitrary joint names + servo IDs -->
   <xacro:macro name="example_ws_ros2_control"
-               params="name front_left_joint_name back_left_joint_name front_left_id back_left_id front_right_joint_name back_right_joint_name front_right_id back_right_id">
+               params="name front_left_joint_name back_left_joint_name front_left_id back_left_id front_right_joint_name back_right_joint_name front_right_id back_right_id device_port baud_rate io_timeout_ms enable_sync_read estimate_state_from_commands">
 
     <ros2_control name="${name}" type="system">
       <hardware>
         <plugin>waveshare_servos/WaveshareServos</plugin>
+        <param name="device_port">${device_port}</param>
+        <param name="baud_rate">${baud_rate}</param>
+        <param name="io_timeout_ms">${io_timeout_ms}</param>
+        <param name="enable_sync_read">${enable_sync_read}</param>
+        <param name="estimate_state_from_commands">${estimate_state_from_commands}</param>
         <param name="example_param_hw_start_duration_sec">0</param>
         <param name="example_param_hw_stop_duration_sec">3.0</param>
         <param name="example_param_hw_slowdown">100</param>
