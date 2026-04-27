@@ -9,7 +9,7 @@ public:
         this->declare_parameter<int>("start_id", 1);
         this->declare_parameter<int>("new_id", 1);
         this->declare_parameter<std::string>("device_port", "/dev/ttyUSB0");
-        this->declare_parameter<int>("baud_rate", 115200); //1000000
+        this->declare_parameter<int>("baud_rate", 921600); //115200
 
         start_id_ = static_cast<uint8_t>(this->get_parameter("start_id").as_int());
         new_id_   = static_cast<uint8_t>(this->get_parameter("new_id").as_int());

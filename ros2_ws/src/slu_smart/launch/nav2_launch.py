@@ -14,7 +14,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'params_file',
-            default_value='/home/pascal/ros2_ws/config/nav2_params.yaml'
+            default_value='/home/morph/MORPH/ros2_ws/config/nav2_params.yaml'
         ),
 
         # Send Nav2's output to your diff drive base

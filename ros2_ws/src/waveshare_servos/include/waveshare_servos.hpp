@@ -69,11 +69,15 @@ private:
     std::vector<double> last_raw_;
     std::vector<long long> rev_count_;
     std::vector<double> last_pos_meas_;
+    std::vector<bool> is_velocity_joint_;
         
 
     // motor variables
-    int baudrate_ = 115200; // was 1000000
-    std::string port_ = "/dev/ttyUSB0"; // /dev/ttyTHS1 if using UART
+    int baudrate_ = 921600;
+    std::string port_ = "/dev/ttyUSB1"; // /dev/ttyTHS1 if using UART
+    int io_timeout_ms_ = 20;
+    bool use_sync_read_ = false;
+    bool estimate_state_from_commands_ = false;
     SMS_STS sm_st;
     double KT_ = 9.0; // torque constant (kg*cm / A)
     int steps_ = 4096;
