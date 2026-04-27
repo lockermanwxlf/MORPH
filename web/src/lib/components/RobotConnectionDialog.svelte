@@ -264,6 +264,8 @@
 			bind:value={host}
 			placeholder="192.168.x.x or 192.168.x.x:8765"
 			class="w-full rounded-xl border border-(--border-soft) px-3 py-2"
+			style:background="var(--surface-soft)"
+			style:color="var(--page-text)"
 		/>
 
 		<div class="space-y-3 rounded-xl bg-(--surface-soft) p-4">
@@ -340,12 +342,16 @@
 						bind:value={ssid}
 						placeholder="SSID (network name)"
 						class="w-full rounded-xl border border-(--border-soft) px-3 py-2"
+						style:background="var(--surface-soft)"
+						style:color="var(--page-text)"
 					/>
 					<input
 						type="password"
 						bind:value={password}
 						placeholder="Password"
 						class="w-full rounded-xl border border-(--border-soft) px-3 py-2"
+						style:background="var(--surface-soft)"
+						style:color="var(--page-text)"
 					/>
 					<div class="flex justify-end">
 						<button

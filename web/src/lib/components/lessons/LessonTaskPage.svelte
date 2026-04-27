@@ -21,22 +21,24 @@
 		</header>
 
 		{#each content.sections ?? [] as section}
-			<section class="space-y-2" class:panel={!!section.paragraphs?.length && !section.bullets?.length}>
+			<section class="space-y-3">
 				{#if section.title}
 					<h2 class="text-xl font-semibold">{section.title}</h2>
 				{/if}
 
-				{#each section.paragraphs ?? [] as paragraph}
-					<p class="opacity-90">{paragraph}</p>
-				{/each}
+				<div class="rounded-xl bg-(--surface-soft) p-4 space-y-2">
+					{#each section.paragraphs ?? [] as paragraph}
+						<p class="opacity-90">{paragraph}</p>
+					{/each}
 
-				{#if section.bullets?.length}
-					<ul class="list-disc pl-6 space-y-1 opacity-90">
-						{#each section.bullets as bullet}
-							<li>{bullet}</li>
-						{/each}
-					</ul>
-				{/if}
+					{#if section.bullets?.length}
+						<ul class="list-disc pl-6 space-y-1 opacity-90">
+							{#each section.bullets as bullet}
+								<li>{bullet}</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
 			</section>
 		{/each}
 
@@ -76,11 +78,3 @@
 		{/if}
 	</article>
 </div>
-
-<style>
-	.panel {
-		border-radius: 0.75rem;
-		background: var(--surface-soft);
-		padding: 1rem;
-	}
-</style>

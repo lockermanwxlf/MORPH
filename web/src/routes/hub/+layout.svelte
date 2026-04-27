@@ -94,8 +94,7 @@
 			</div>
 		</header>
 		<main
-			class="flex-1 min-h-0 content flex flex-col"
-			class:overflow-y-auto={!isMyRobotRoute}
+			class="flex-1 min-h-0 content flex flex-col overflow-y-auto"
 			class:rounded-r-2xl={!isMyRobotRoute}
 		>
 			{@render children()}

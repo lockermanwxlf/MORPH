@@ -62,6 +62,33 @@ export const k5MeetRobotTask: LessonTaskContent = {
     },
 };
 
+export const k5WheelMotionTask: LessonTaskContent = {
+    badge: "Task 3",
+    title: "What you should notice",
+    description:
+        "Watch the wheels and robot body together: the motion is determined by which side moves forward or backward.",
+    sections: [
+        {
+            title: "Wheel motion summary",
+            bullets: [
+                "When both wheels go forward, the robot goes forward.",
+                "When both wheels go backward, the robot goes backward.",
+                "When the left wheels go forward and the right wheels go backward, the robot rotates to the right.",
+                "When the left wheels go backward and the right wheels go forward, the robot rotates to the left.",
+            ],
+        },
+    ],
+    leftNav: {
+        href: "/hub/lesson/driving/k-5/try-it-out",
+        label: "← Back",
+    },
+    rightNav: {
+        href: "/hub/lesson/driving/k-5/on-your-own",
+        label: "Next: On your own →",
+        variant: "primary",
+    },
+};
+
 export const k5OnYourOwnTask: LessonTaskContent = {
     badge: "Final Task",
     title: "On your own",

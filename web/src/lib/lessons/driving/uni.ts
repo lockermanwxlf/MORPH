@@ -56,6 +56,62 @@ export const uniMeetRobotTask: LessonTaskContent = {
 	},
 };
 
+export const uniRos2PipelineTask: LessonTaskContent = {
+	badge: "Task 3",
+	title: "ROS 2 pipeline and Twist control",
+	description:
+		"This page follows the full path from held keys in the browser to the Twist message that drives the robot.",
+	sections: [
+		{
+			title: "WASD to Twist",
+			bullets: [
+				"The browser app keeps track of which keys are currently being held down.",
+				"W and S become the forward/backward part of the Twist, which goes into linear.x.",
+				"A and D become the turning part of the Twist, which goes into angular.z.",
+				"The app sends the Twist over a WebSocket to the robot on /diff_drive_base/cmd_vel.",
+				"The robot receives that Twist and uses the velocity values inside it to drive its wheels.",
+			],
+		},
+		{
+			title: "What happens after Twist",
+			paragraphs: [
+				"The robot receives the Twist and uses the velocity values inside it to determine what the wheels should do.",
+				"The drive controller converts that Twist into left and right wheel velocities using the robot geometry.",
+				"Use forward velocity v, angular velocity ω, wheel separation L, and wheel radius r.",
+				"Right wheel linear velocity: vR = v + (ωL)/2.",
+				"Left wheel linear velocity: vL = v - (ωL)/2.",
+				"Wheel angular velocity is the linear velocity divided by r.",
+			],
+		},
+		{
+			title: "Geometry and hardware",
+			bullets: [
+				"The URDF/Xacro defines wheel radius and wheel separation.",
+				"The controller YAML must match those geometry values.",
+				"The hardware plugin maps wheel joints to motors and converts units.",
+			],
+		},
+		{
+			title: "Observing commands",
+			bullets: [
+				"W should produce positive linear.x and near-zero angular.z.",
+				"S should produce negative linear.x.",
+				"A should produce positive angular.z with near-zero linear.x.",
+				"D should produce negative angular.z with near-zero linear.x.",
+			],
+		},
+	],
+	leftNav: {
+		href: "/hub/lesson/driving/uni/try-it-out",
+		label: "← Back",
+	},
+	rightNav: {
+		href: "/hub/lesson/driving/uni/on-your-own",
+		label: "Next: On your own →",
+		variant: "primary",
+	},
+};
+
 export const uniOnYourOwnTask: LessonTaskContent = {
 	badge: "Final Task",
 	title: "On your own",
@@ -68,7 +124,7 @@ export const uniOnYourOwnTask: LessonTaskContent = {
 		},
 	],
 	leftNav: {
-		href: "/hub/lesson/driving/uni/try-it-out",
+		href: "/hub/lesson/driving/uni/ros2-pipeline",
 		label: "← Back",
 	},
 	rightNav: {

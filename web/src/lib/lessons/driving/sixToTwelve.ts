@@ -56,6 +56,49 @@ export const sixToTwelveMeetRobotTask: LessonTaskContent = {
     },
 };
 
+export const sixToTwelveTwistTask: LessonTaskContent = {
+    badge: "Task 3",
+    title: "WASD to Twist",
+    description:
+        "This page shows how held WASD keys are converted into a ROS 2 Twist message and sent to the robot.",
+    sections: [
+        {
+            title: "What a Twist message is",
+            paragraphs: [
+                "A Twist message is a ROS 2 message that describes motion using linear.x and angular.z.",
+                "linear.x tells the robot how fast to move forward or backward.",
+                "angular.z tells the robot how fast to rotate left or right.",
+            ],
+        },
+        {
+            title: "Key mapping",
+            bullets: [
+                "W sets the desired forward velocity.",
+                "S sets the desired backward velocity.",
+                "A sets the desired left rotation.",
+                "D sets the desired right rotation.",
+            ],
+        },
+        {
+            title: "Twist message",
+            paragraphs: [
+                "The app reads the held WASD keys and generates a ROS 2 Twist message from them.",
+                "It puts forward and backward motion into linear.x and turning motion into angular.z.",
+                "That Twist message is sent to the robot, and the robot uses the velocity values inside it to decide how to move its wheels.",
+            ],
+        },
+    ],
+    leftNav: {
+        href: "/hub/lesson/driving/6-12/try-it-out",
+        label: "← Back",
+    },
+    rightNav: {
+        href: "/hub/lesson/driving/6-12/on-your-own",
+        label: "Next: On your own →",
+        variant: "primary",
+    },
+};
+
 export const sixToTwelveOnYourOwnTask: LessonTaskContent = {
     badge: "Final Task",
     title: "On your own",
@@ -68,7 +111,7 @@ export const sixToTwelveOnYourOwnTask: LessonTaskContent = {
         },
     ],
     leftNav: {
-        href: "/hub/lesson/driving/6-12/try-it-out",
+        href: "/hub/lesson/driving/6-12/twist-and-velocity",
         label: "← Back",
     },
     rightNav: {
