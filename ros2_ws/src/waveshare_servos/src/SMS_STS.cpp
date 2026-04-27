@@ -260,6 +260,7 @@ int SMS_STS::ReadCurrent(int ID)
 // https://github.com/adityakamath/SCServo_Linux/blob/main/SMS_STS.cpp
 void SMS_STS::SyncWriteSpe(u8 ID[], u8 IDN, s16 Speed[], u8 ACC[])
 {
+    (void)ACC;
     u8 offbuf[IDN][2];
     for(u8 i = 0; i<IDN; i++){
 		if(Speed[i]<0){
@@ -267,12 +268,6 @@ void SMS_STS::SyncWriteSpe(u8 ID[], u8 IDN, s16 Speed[], u8 ACC[])
 			Speed[i] |= (1<<15);
 		}
         u8 bBuf[2];
-		if(ACC[i]){
-			bBuf[0] = ACC[i];
-		}else{
-			bBuf[0] = 0;
-		}
-        genWrite(ID[i], SMS_STS_ACC, bBuf, 1);
         Host2SCS(bBuf+0, bBuf+1, Speed[i]);
         memcpy(offbuf[i], bBuf, 2);
     }

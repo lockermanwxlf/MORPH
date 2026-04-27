@@ -13,6 +13,12 @@ SCS::SCS()
 {
 	Level = 1;//除广播指令所有指令返回应答
 	Error = 0;
+	syncReadRxPacketIndex = 0;
+	syncReadRxPacketLen = 0;
+	syncReadRxPacket = NULL;
+	syncReadRxBuff = NULL;
+	syncReadRxBuffLen = 0;
+	syncReadRxBuffMax = 0;
 }
 
 SCS::SCS(u8 End)
@@ -20,6 +26,12 @@ SCS::SCS(u8 End)
 	Level = 1;
 	this->End = End;
 	Error = 0;
+	syncReadRxPacketIndex = 0;
+	syncReadRxPacketLen = 0;
+	syncReadRxPacket = NULL;
+	syncReadRxBuff = NULL;
+	syncReadRxBuffLen = 0;
+	syncReadRxBuffMax = 0;
 }
 
 SCS::SCS(u8 End, u8 Level)
@@ -27,6 +39,12 @@ SCS::SCS(u8 End, u8 Level)
 	this->Level = Level;
 	this->End = End;
 	Error = 0;
+	syncReadRxPacketIndex = 0;
+	syncReadRxPacketLen = 0;
+	syncReadRxPacket = NULL;
+	syncReadRxBuff = NULL;
+	syncReadRxBuffLen = 0;
+	syncReadRxBuffMax = 0;
 }
 
 //1个16位数拆分为2个8位数

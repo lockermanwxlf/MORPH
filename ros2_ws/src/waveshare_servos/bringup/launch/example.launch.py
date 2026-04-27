@@ -14,9 +14,39 @@ def generate_launch_description():
             "gui",
             default_value="true",
             description="Start RViz2 automatically with this launch file.",
-        )
+        ),
+        DeclareLaunchArgument(
+            "device_port",
+            default_value="/dev/ttyUSB0",
+            description="Servo USB device path, e.g. /dev/ttyUSB1 or /dev/serial/by-path/...",
+        ),
+        DeclareLaunchArgument(
+            "baud_rate",
+            default_value="921600",
+            description="Servo bus baud rate.",
+        ),
+        DeclareLaunchArgument(
+            "io_timeout_ms",
+            default_value="20",
+            description="Serial read timeout in milliseconds.",
+        ),
+        DeclareLaunchArgument(
+            "enable_sync_read",
+            default_value="false",
+            description="Use multi-servo syncRead feedback if supported by your hardware chain.",
+        ),
+        DeclareLaunchArgument(
+            "estimate_state_from_commands",
+            default_value="true",
+            description="Estimate joint states from commanded motion instead of blocking on motor feedback each cycle.",
+        ),
     ]
     gui = LaunchConfiguration("gui")
+    device_port = LaunchConfiguration("device_port")
+    baud_rate = LaunchConfiguration("baud_rate")
+    io_timeout_ms = LaunchConfiguration("io_timeout_ms")
+    enable_sync_read = LaunchConfiguration("enable_sync_read")
+    estimate_state_from_commands = LaunchConfiguration("estimate_state_from_commands")
 
     # Build robot_description from xacro (wrap output as a string parameter)
     xacro_cmd = Command([
@@ -25,6 +55,16 @@ def generate_launch_description():
             FindPackageShare("waveshare_servos"),
             "description", "urdf", "example.urdf.xacro",
         ]),
+        " ",
+        "device_port:=", device_port,
+        " ",
+        "baud_rate:=", baud_rate,
+        " ",
+        "io_timeout_ms:=", io_timeout_ms,
+        " ",
+        "enable_sync_read:=", enable_sync_read,
+        " ",
+        "estimate_state_from_commands:=", estimate_state_from_commands,
     ])
     robot_description = {
         "robot_description": ParameterValue(xacro_cmd, value_type=str)  # <-- fix
@@ -110,3 +150,11 @@ def generate_launch_description():
 
     print(f"robot_controllers: {robot_controllers}")
     return LaunchDescription(declared_arguments + nodes)
+
+
+#ros2 launch waveshare_servos example.launch.py \
+#  device_port:=/dev/ttyUSB1 \
+#  baud_rate:=921600 \
+#  io_timeout_ms:=20 \
+#  enable_sync_read:=false \
+#  estimate_state_from_commands:=true

@@ -14,6 +14,8 @@ ros2 run slu_smart talker
 3. to start controller
 ros2 launch waveshare_servos example.launch.py
 
+ros2 launch waveshare_servos example.launch.py   io_timeout_ms:=20   enable_sync_read:=false   estimate_state_from_commands:=false
+
 3a. to drive around with keyboard
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args   -r /cmd_vel:=/diff_drive_base/cmd_vel   -p stamped:=true   -p frame_id:=base_link
 
@@ -34,13 +36,14 @@ ros2 launch sllidar_ros2 view_sllidar_a1_launch.py \
   serial_port:=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
 
 #TODO, ROTATE AND POSITION THIS FRAME BASED ON WHAT FINAL POSITION IS
+6a. transform lidar to base (autoport should do this)
 ros2 run tf2_ros static_transform_publisher   0.0762 0.0 0.1651 3.14159 0.0 0.0   base_link laser
 
 7. to use SLAM
-ros2 launch slam_toolbox online_async_launch.py   slam_params_file:=/home/pascal/ros2_ws/config/slam_toolbox.yaml   use_sim_time:=false
+ros2 launch slam_toolbox online_async_launch.py   slam_params_file:=/home/morph/MORPH/ros2_ws/config/slam_toolbox.yaml   use_sim_time:=false
 
 8. to use NAV2
-ros2 launch ~/ros2_ws/src/slu_smart/launch/nav2_launch.py
+ros2 launch ~/MORPH/ros2_ws/src/slu_smart/launch/nav2_launch.py
 
 #TODO
 - Unsure if I should use the odom from slam "/odom"
@@ -54,3 +57,32 @@ or the odom from diff drive "/diff_drive_base/odom"
 
 
  # WRITE DOWN NOTES FOR PORT FORWARDING IN README! (AND SETTING UP USER!)
+ 
+ 
+ ## TO INSTALL
+ - base install steps of fresh ubuntu
+ 1a. sudo apt update
+ 1b. sudo apt upgrade
+ 
+ - base install of ROS2 Jazzy
+ 2. https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
+ 
+ - for servo, dependencies
+ 3a. sudo apt update
+ 3b. (while in ros2_ws) sudo rosdep init
+ 3c. sudo rosdep
+ 3d. sudo apt install ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-ament-cmake-mypy
+ 3e. sudo chmod 666 /dev/ttyUSB0 (could be changed to other dev, this is motor)
+ 3f. sudo chmod 777 /dev/ttyUSB1 (could be changed to other dev, this is lidar)
+
+ - build
+ 4. colcon build --symlink-install
+ 
+ - foxglove install
+ 5. sudo apt install ros-jazzy-foxglove-bridge
+ 
+ - slam_toolbox install
+ 6. sudo apt install ros-jazzy-slam-toolbox
+ 
+ - nav2 install
+ 7. sudo apt install ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb*
