@@ -1,0 +1,34 @@
+from dataclasses import dataclass
+
+from pydantic import BaseModel, EmailStr
+
+from postgres import PostgresConnection
+
+
+@dataclass
+class Token:
+    token: str
+    type: str
+
+
+@dataclass
+class TokenData:
+    email = None
+
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+
+
+@dataclass
+class User:
+    email: str
+
+
+@dataclass
+class DbUser(User):
+    password_hash: str
+
+
+UsersConnection = PostgresConnection

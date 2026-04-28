@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
-<service-group>
-    <name replace-wildcards="yes">MORPH-%h</name>
-    <service>
-        <type>_morph-ws._tcp</type>
-        <port>8765</port>
-    </service>
-</service-group>

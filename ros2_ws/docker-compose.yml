@@ -1,0 +1,12 @@
+services:
+  morph-sim:
+    build:
+      context: .
+      dockerfile: docker/sim.Dockerfile
+    environment:
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      CYCLONEDDS_URI: file:///ws/docker/cyclonedds.xml
+    ports:
+      - "8765:8765"
+    stdin_open: true
+    tty: true

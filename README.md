@@ -1,38 +1,49 @@
 # MORPH
 A modular open-source robotic programming hub.
-## Overview
-MORPH consists of:
-- `web/`: React + TanStack Start frontend (runs on port `3000`)
-- `server/`: FastAPI + Socket.IO backend (runs on port `8000`)
-- `ros2_ws/`: ROS 2 workspace and robot-side packages
-The frontend proxies `/api/*` and `/socket.io/*` to the backend.
+
+## Table of Contents
+1. [About](#about)
+1. [Quickstart](#quickstart)
+1. [Support](#support)
+1. [Purchase](#purchase)
+1. [Copyright](#copyright)
+
+## About
+- MORPH is an open-source robotics platform.
+….
+- Our services include:
+….
+- Our code and circuit are open source. You can obtain the details and the latest information through visiting the following web site:
+
 ## Prerequisites
 - Node.js 18+ (or latest LTS)
 - `pnpm` (`npm i -g pnpm`)
 - Python 3.11+ (recommended)
-## Quick Start (Local Development)
-### 1) Start backend
-```bash
-cd server
-python -m venv .venv
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
-# macOS/Linux
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -e .
-uvicorn main:app --reload --port 8000
+## Quickstart
+
+### Robot
+
+Use Docker Compose to run a simulated robot
+
+```
+cd ros2_ws
+docker compose up
 ```
 
-### 2) Start frontend (new terminal)
-```bash
+### Backend
+
+```
+cd backend
+docker compose up
+```
+
+### Website
+
+```
 cd web
 pnpm install
-pnpm dev
+pnpm run dev --open
 ```
-Open: http://localhost:3000
-
-> ROS 2 builds are only needed if you plan to run the robot stack locally. For UI-only testing, the steps above are sufficient.
 
 ## Support
 
@@ -46,12 +57,4 @@ Open: http://localhost:3000
 
 ## Copyright
 
-
-## About
-- MORPH is an open-source robotics platform.
-….
-- Our services include:
-….
-- Our code and circuit are open source. You can obtain the details and the latest information through visiting the following web site:
-
-....
+[License](./LICENSE)

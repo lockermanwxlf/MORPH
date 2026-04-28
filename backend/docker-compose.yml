@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: morph-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: morph
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d morph" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: morph-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/morph
+      JWT_SECRET_KEY: 805cc53d0c0b6967ad121acd209e24823eb2c1f30e6eecaee52a22c23b4ba990
+      TOKEN_DEFAULT_EXPIRY: 15
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:

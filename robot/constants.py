@@ -1,0 +1,12 @@
+BLUEZ_SERVICE = "org.bluez"
+OBJ_MANAGER_IFACE = "org.freedesktop.DBus.ObjectManager"
+GATT_MANAGER_IFACE = "org.bluez.GattManager1"
+LE_ADV_MANAGER_IFACE = "org.bluez.LEAdvertisingManager1"
+DBUS_PROPERTIES_IFACE = "org.freedesktop.DBus.Properties"
+GATT_SERVICE_IFACE = "org.bluez.GattService1"
+GATT_CHARACTERISTIC_IFACE = "org.bluez.GattCharacteristic1"
+LE_ADVERTISEMENT_IFACE = "org.bluez.LEAdvertisement1"
+
+NM_SERVICE = "org.freedesktop.NetworkManager"
+NM_PATH = "/org/freedesktop/NetworkManager"
+NM_IFACE = "org.freedesktop.NetworkManager"

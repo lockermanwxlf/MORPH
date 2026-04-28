@@ -1,0 +1,1 @@
+uv run stickytape gatt-server.py --output-file gatt-server-bundled.py

@@ -2,37 +2,47 @@
 """BlueZ GATT service + LE advertisement for Debian/Linux."""
 
 import asyncio
-import json
 import signal
 import socket
-from pathlib import Path
 from typing import Any
 
 from dbus_fast import BusType, PropertyAccess, Variant
 from dbus_fast.aio import MessageBus
 from dbus_fast.service import ServiceInterface, dbus_property, method
-
-BLUEZ_SERVICE = "org.bluez"
-OBJ_MANAGER_IFACE = "org.freedesktop.DBus.ObjectManager"
-GATT_MANAGER_IFACE = "org.bluez.GattManager1"
-LE_ADV_MANAGER_IFACE = "org.bluez.LEAdvertisingManager1"
-
-APP_PATH = "/com/morph/app"
-SERVICE_PATH = "/com/morph/app/service0"
-CHAR_PATH = "/com/morph/app/service0/char0"
-ADV_PATH = "/com/morph/advertisement0"
-
-NM_SERVICE = "org.freedesktop.NetworkManager"
-NM_PATH = "/org/freedesktop/NetworkManager"
-NM_IFACE = "org.freedesktop.NetworkManager"
-
-SERVICE_UUID = "fe99"
-CHAR_UUID = "a14ddb44-90a8-4b95-a604-66bdafe8a0fb"
-# Advertising interval in milliseconds (BlueZ accepts 20ms to 10,485s).
-# Use equal values for near-fixed cadence, or a small range.
-ADV_MIN_INTERVAL_MS = 200
-ADV_MAX_INTERVAL_MS = 300
-DEVICE_ID_PATH = Path("/etc/morph/device_id")
+from characteristics import (
+    NetworkStatusCharacteristic,
+    WifiProvisioningCharacteristic,
+)
+from config import (
+    ADV_MAX_INTERVAL_MS,
+    ADV_MIN_INTERVAL_MS,
+    ADV_PATH,
+    APP_PATH,
+    DEVICE_ID_PATH,
+    MORPH_LOCAL_NAME,
+    MORPH_SERVICE_PORT,
+    MORPH_SERVICE_TYPE,
+    NETWORK_STATUS_CHAR_PATH,
+    NETWORK_STATUS_CHAR_UUID,
+    SERVICE_UUID,
+    SERVICE_PATH,
+    WIFI_CHAR_UUID,
+    WIFI_CHAR_PATH,
+    WIFI_INTERFACE,
+)
+from constants import (
+    BLUEZ_SERVICE,
+    DBUS_PROPERTIES_IFACE,
+    GATT_CHARACTERISTIC_IFACE,
+    GATT_MANAGER_IFACE,
+    GATT_SERVICE_IFACE,
+    LE_ADVERTISEMENT_IFACE,
+    LE_ADV_MANAGER_IFACE,
+    NM_IFACE,
+    NM_PATH,
+    NM_SERVICE,
+    OBJ_MANAGER_IFACE,
+)
 
 # Global network state counter
 network_state_counter = 0
@@ -40,65 +50,61 @@ network_state_counter = 0
 # avahi-publish process handle
 avahi_proc: asyncio.subprocess.Process | None = None
 
-# Wifi hotspot stuff
-WIFI_CHAR_UUID = "eaf9ab55-aea7-4b8a-98b1-5b9b139f41e3"
-WIFI_CHAR_PATH = "/com/morph/app/service0/char1"
+async def get_ssid() -> str:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "sudo",
+            "iw",
+            "dev",
+            WIFI_INTERFACE,
+            "link",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        output = stdout.decode()
+        return next(
+            (
+                line.split("SSID:", 1)[1].strip()
+                for line in output.splitlines()
+                if "SSID:" in line
+            ),
+            "",
+        )
+    except Exception as e:
+        print("ERROR [get_ssid]:", e)
+        return ""
 
 
-# ssid request
-WIFI_STATUS_CHAR_UUID = "a2169d6e-07aa-457e-8139-19803dbd6bfd"
-WIFI_STATUS_CHAR_PATH = "/com/morph/app/service0/char2"
+async def get_private_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("10.255.255.255", 1))
+            return sock.getsockname()[0]
+    except Exception:
+        pass
+
+    proc = await asyncio.create_subprocess_shell(
+        "hostname -I | awk '{print $1}'",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    try:
+        out, err = await proc.communicate()
+        if proc.returncode == 0:
+            return out.decode().strip()
+
+        print("ERROR [get_private_ip]:", err.decode())
+        return ""
+    except asyncio.CancelledError:
+        proc.terminate()
+        await proc.wait()
+        raise
 
 
-class WifiStatusCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
-        self.cached_network_state = None
-        self.cached_payload = b""
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return WIFI_STATUS_CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["read"]
-
-    async def update_cached_value(self) -> None:
-        if self.cached_network_state != network_state_counter:
-            ssid = ""
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    "nmcli",
-                    "-t",
-                    "-f",
-                    "active,ssid",
-                    "device",
-                    "wifi",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, _ = await proc.communicate()
-
-                if proc.returncode == 0:
-                    lines = stdout.decode().strip().splitlines()
-                    ssid = next(
-                        (line[4:] for line in lines if line.startswith("yes:")), ""
-                    )
-            except Exception as e:
-                print(f"Error fetching current WiFi SSID: {e}")
-            self.cached_network_state = network_state_counter
-            self.cached_payload = json.dumps(
-                {"ssid": ssid, "st": network_state_counter}
-            ).encode("utf-8")
-
-    @method()
-    async def ReadValue(self, _options: "a{sv}") -> "ay":
-        return self.cached_payload
+async def _get_current_network_details() -> tuple[str, str]:
+    return await get_ssid(), await get_private_ip()
 
 
 async def _restart_avahi(device_id: str) -> None:
@@ -114,21 +120,7 @@ async def _restart_avahi(device_id: str) -> None:
             print(f"Error stopping avahi-publish: {e}")
     avahi_proc = None
 
-    # Check whether there is an active WiFi connection
-    check = await asyncio.create_subprocess_exec(
-        "nmcli",
-        "-t",
-        "-f",
-        "active,ssid",
-        "device",
-        "wifi",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    stdout, _ = await check.communicate()
-    connected = any(
-        line.startswith("yes:") for line in stdout.decode().strip().splitlines()
-    )
+    connected = bool(await get_ssid())
 
     if not connected:
         print("avahi-publish: no active WiFi — not starting", flush=True)
@@ -137,7 +129,7 @@ async def _restart_avahi(device_id: str) -> None:
     hostname = socket.gethostname()
     service_name = f"MORPH-{hostname}"
     txt = f"DEVICE_ID={device_id}" if device_id else ""
-    cmd = ["avahi-publish", "-s", service_name, "_morph-ws._tcp", "8765"]
+    cmd = ["avahi-publish", "-s", service_name, MORPH_SERVICE_TYPE, MORPH_SERVICE_PORT]
     if txt:
         cmd.append(txt)
     print(f"Starting avahi-publish: {' '.join(cmd)}", flush=True)
@@ -192,37 +184,6 @@ async def _apply_wifi(ssid: str, psk: str) -> None:
         print(f"Failed to connect to WiFi network '{ssid}': {stderr.decode()}")
 
 
-class WifiProvisioningCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
-        self.value = b""
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return WIFI_CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["write"]
-
-    @method()
-    async def WriteValue(self, value: "ay", _options: "a{sv}") -> None:
-        self.value = bytes(value)
-        try:
-            payload = json.loads(self.value.decode("utf-8"))
-            ssid = payload.get("ssid")
-            psk = payload.get("psk")
-            if ssid and psk:
-                print(f"Received WiFi provisioning data: SSID={ssid}, PSK={psk}")
-                asyncio.create_task(_apply_wifi(ssid, psk))
-        except Exception as e:
-            print(f"Error processing WiFi provisioning data: {e}")
-
-
 class Application(ServiceInterface):
     def __init__(self) -> None:
         super().__init__(OBJ_MANAGER_IFACE)
@@ -231,31 +192,23 @@ class Application(ServiceInterface):
     def GetManagedObjects(self) -> "a{oa{sa{sv}}}":
         return {
             SERVICE_PATH: {
-                "org.bluez.GattService1": {
+                GATT_SERVICE_IFACE: {
                     "UUID": Variant("s", SERVICE_UUID),
                     "Primary": Variant("b", True),
                     "Includes": Variant("ao", []),
                 }
             },
-            CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
-                    "Service": Variant("o", SERVICE_PATH),
-                    "UUID": Variant("s", CHAR_UUID),
-                    "Flags": Variant("as", ["read"]),
-                    "Value": Variant("ay", b"ready"),
-                }
-            },
             WIFI_CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
+                GATT_CHARACTERISTIC_IFACE: {
                     "Service": Variant("o", SERVICE_PATH),
                     "UUID": Variant("s", WIFI_CHAR_UUID),
                     "Flags": Variant("as", ["write"]),
                 }
             },
-            WIFI_STATUS_CHAR_PATH: {
-                "org.bluez.GattCharacteristic1": {
+            NETWORK_STATUS_CHAR_PATH: {
+                GATT_CHARACTERISTIC_IFACE: {
                     "Service": Variant("o", SERVICE_PATH),
-                    "UUID": Variant("s", WIFI_STATUS_CHAR_UUID),
+                    "UUID": Variant("s", NETWORK_STATUS_CHAR_UUID),
                     "Flags": Variant("as", ["read"]),
                 }
             },
@@ -264,7 +217,7 @@ class Application(ServiceInterface):
 
 class GattService(ServiceInterface):
     def __init__(self) -> None:
-        super().__init__("org.bluez.GattService1")
+        super().__init__(GATT_SERVICE_IFACE)
 
     @dbus_property(access=PropertyAccess.READ)
     def UUID(self) -> "s":
@@ -279,35 +232,9 @@ class GattService(ServiceInterface):
         return []
 
 
-class GattCharacteristic(ServiceInterface):
-    def __init__(self) -> None:
-        super().__init__("org.bluez.GattCharacteristic1")
-        self.value = b"ready"
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Service(self) -> "o":
-        return SERVICE_PATH
-
-    @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> "s":
-        return CHAR_UUID
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "as":
-        return ["read"]
-
-    @dbus_property(access=PropertyAccess.READ)
-    def Value(self) -> "ay":
-        return self.value
-
-    @method()
-    def ReadValue(self, _options: "a{sv}") -> "ay":
-        return self.value
-
-
 class Advertisement(ServiceInterface):
     def __init__(self, device_id: str) -> None:
-        super().__init__("org.bluez.LEAdvertisement1")
+        super().__init__(LE_ADVERTISEMENT_IFACE)
         self.device_id = device_id
 
     def increment_network_state(self) -> None:
@@ -324,7 +251,7 @@ class Advertisement(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def LocalName(self) -> "s":
-        return "Morph"
+        return MORPH_LOCAL_NAME
 
     @dbus_property(access=PropertyAccess.READ)
     def ManufacturerData(self) -> "a{qv}":
@@ -375,22 +302,22 @@ async def main() -> None:
 
     app = Application()
     svc = GattService()
-    ch = GattCharacteristic()
-    wifi_ch = WifiProvisioningCharacteristic()
+    wifi_ch = WifiProvisioningCharacteristic(_apply_wifi)
     adv = Advertisement(device_id)
-    wifi_status_ch = WifiStatusCharacteristic()
+    network_status_ch = NetworkStatusCharacteristic(
+        _get_current_network_details, lambda: network_state_counter
+    )
 
     # Fetch initial wifi state
     print("Fetching initial WiFi state...", flush=True)
-    await wifi_status_ch.update_cached_value()
+    await network_status_ch.update_cached_value()
     await _restart_avahi(device_id)
 
     bus.export(APP_PATH, app)
     bus.export(SERVICE_PATH, svc)
-    bus.export(CHAR_PATH, ch)
     bus.export(WIFI_CHAR_PATH, wifi_ch)
     bus.export(ADV_PATH, adv)
-    bus.export(WIFI_STATUS_CHAR_PATH, wifi_status_ch)
+    bus.export(NETWORK_STATUS_CHAR_PATH, network_status_ch)
 
     adapter_intro = await bus.introspect(BLUEZ_SERVICE, adapter_path)
     adapter_obj = bus.get_proxy_object(BLUEZ_SERVICE, adapter_path, adapter_intro)
@@ -400,12 +327,12 @@ async def main() -> None:
     # Listen for network changes
     nm_intro = await bus.introspect(NM_SERVICE, NM_PATH)
     nm_obj = bus.get_proxy_object(NM_SERVICE, NM_PATH, nm_intro)
-    props_iface = nm_obj.get_interface("org.freedesktop.DBus.Properties")
+    props_iface = nm_obj.get_interface(DBUS_PROPERTIES_IFACE)
 
     def on_network_state_changed(
         interface_name: str, changed_properties: dict, invalidated_properties: list
     ) -> None:
-        if interface_name == "org.freedesktop.NetworkManager":
+        if interface_name == NM_IFACE:
             if "State" in changed_properties:
                 new_state = changed_properties["State"].value
                 print(f"NetworkManager State changed to: {new_state}", flush=True)
@@ -413,7 +340,7 @@ async def main() -> None:
                 async def sync_network_state():
                     global network_state_counter
                     network_state_counter += 1
-                    await wifi_status_ch.update_cached_value()
+                    await network_status_ch.update_cached_value()
                     await _restart_avahi(device_id)
                     if "PrimaryConnection" in changed_properties:
                         adv.emit_properties_changed(
@@ -450,8 +377,7 @@ async def main() -> None:
     await gatt_mgr.call_unregister_application(APP_PATH)
     bus.unexport(ADV_PATH)
     bus.unexport(WIFI_CHAR_PATH)
-    bus.unexport(WIFI_STATUS_CHAR_PATH)
-    bus.unexport(CHAR_PATH)
+    bus.unexport(NETWORK_STATUS_CHAR_PATH)
     bus.unexport(SERVICE_PATH)
     bus.unexport(APP_PATH)
     bus.disconnect()
